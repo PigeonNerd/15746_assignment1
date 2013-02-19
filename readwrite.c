@@ -207,17 +207,18 @@ void print_superBlock(struct ext2_super_block* superBlock){
 	//short magicNum = (short)sb->s_magic;
 	unsigned char magicNum = superBlock->s_magic;
 	unsigned int totalBlocks = superBlock->s_blocks_count;
-
+	unsigned int totalInodes = superBlock->s_inodes_count;
 	printf("magic number: 0x%02X\n", magicNum);
 	printf("total number of blocks: %d\n", totalBlocks);
+	printf("total number of inodes: %d\n", totalInodes);
 }
 
 /*
 	translate from inode number to sector number
 */
 
-int inodeToSector(unsigned char* superBlock, int baseSector, int inodeNum){
-	int inodesPerBlockGroup = *((int* )(superBlock + 40));
+int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, int inodeNum){
+	unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
 	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
 
 	unsigned char descriptorTable[block_size_bytes];
