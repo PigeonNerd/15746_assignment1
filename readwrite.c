@@ -172,28 +172,28 @@ void print_partition_table(unsigned char* MBR){
 */
 
 void print_partition(unsigned char* MBR, int p){
-	partition* sp;
+	struct partition* sp;
 	
 	if(p < 5){
-		sp = (partition *)(MBR + lotsOfZeros + 16*(p-1));
-		printf("0x%02X %d %d\n", sp->type, sp->start, sp->length);
+		sp = (struct partition *)(MBR + lotsOfZeros + 16*(p-1));
+		printf("0x%02X %d %d\n", sp->sys_ind, sp->start_sect, sp->nr_sects);
 	}else{
-		sp = (partition *)(MBR + lotsOfZeros + (16 * 3));
+		sp = (struct partition *)(MBR + lotsOfZeros + (16 * 3));
 		unsigned char extended[sector_size__bytes];
-		int baseStart = 0;
+		unsigned int baseStart = 0;
 		int i;
 		for(i=5; i <= p ; i ++){
 			baseStart += sp->start;
-			if(sp->type == 5){
+			if(sp->sys_ind == 5){
 			read_sectors(baseStart, 1, extended);
-			sp =  (partition *)(extended + lotsOfZeros + 16);
+			sp =  (struct partition *)(extended + lotsOfZeros + 16);
 			}else{
 				printf("%d\n", -1);
 				return;
 			}
 		}
-		partition* logicalPartition = (partition *)(extended + lotsOfZeros);
-		printf("0x%02X %d %d\n", logicalPartition->type, baseStart + logicalPartition->start, logicalPartition->length);
+		struct partition* logicalPartition = (struct partition *)(extended + lotsOfZeros);
+		printf("0x%02X %d %d\n", logicalPartition->sys_ind, baseStart + logicalPartition->start_sect, logicalPartition->nr_sects);
 	}
 }
 
