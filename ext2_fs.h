@@ -129,6 +129,12 @@
 # define EXT2_FRAGS_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s) / EXT2_FRAG_SIZE(s))
 #endif
 
+//Yingchao: I add this
+typedef  unsigned char __u8;
+typedef  unsigned short __u16;
+typedef  unsigned short __s16;
+typedef  unsigned int __u32;
+typedef  unsigned int __s32;
 /*
  * ACL structures
  */

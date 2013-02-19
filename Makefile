@@ -19,6 +19,6 @@ myfsck: $(OBJS)
 clean:
 	rm -f *.o $(BINS)
 
-readwrite.o: fsck.h readwrite.c
+readwrite.o: ext2_fs.h readwrite.c
 	${CC} readwrite.c ${CFLAGS} -c -o $@
 

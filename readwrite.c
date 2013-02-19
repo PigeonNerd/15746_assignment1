@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include "fsck.h"
+//#include "ext2_fs.h"
 
 #define __FreeBSD__ 1
 #if defined(__FreeBSD__)
@@ -28,9 +29,8 @@
 
 /* linux: lseek64 declaration needed here to eliminate compiler warning. */
 extern int64_t lseek64(int, int64_t, int);
-
-
-const unsigned int sector_size__bytes=512;
+const unsigned int sector_size__bytes = 512;
+const unsigned int block_size_bytes = 1024;
 
 int device;  /* disk file descriptor */
 
@@ -181,13 +181,58 @@ void print_partition(unsigned char* MBR, int p){
 		int i;
 		for(i=5; i <= p ; i ++){
 			baseStart += sp->start;
+			if(sp->type == 5){
 			read_sectors(baseStart, 1, extended);
 			sp =  (partition *)(extended + lotsOfZeros + 16);
+			}else{
+				printf("%d\n", -1);
+				return;
+			}
 		}
 		partition* logicalPartition = (partition *)(extended + lotsOfZeros);
 		printf("0x%02X %d %d\n", logicalPartition->type, baseStart + logicalPartition->start, logicalPartition->length);
 	}
 }
+
+/*
+	print superBlock for partition 1
+*/
+
+void print_superBlock(unsigned char* superBlock){
+
+	//struct ext2_super_block* sb = (struct ext2_super_block *)superBlock;
+	//short magicNum = (short)sb->s_magic;
+	short magicNum = *((short *)(superBlock + 56 ));
+	int totalBlocks = *((int *)(superBlock + 32));
+
+	printf("magic number: 0x%02X\n", magicNum);
+	printf("total number of blocks: %d\n", totalBlocks);
+}
+
+/*
+	translate from inode number to sector number
+*/
+
+int inodeToSector(unsigned char* superBlock, int baseSector, int inodeNum){
+	int inodesPerBlockGroup = *((int* )(superBlock + 40));
+	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
+
+	unsigned char descriptorTable[block_size_bytes];
+
+	read_sectors(baseSector + 4, 2, descriptorTable);
+
+	//tmp define
+	int decriptorSize = 32; // bytes
+	int blockId = *(int* )(descriptorTable + groupIndex * decriptorSize + 8);
+
+
+
+	printf("number of inodes per block group: %d\n", inodesPerBlockGroup);
+	printf(" blockId: %d\n", blockId);
+	return 0;
+}
+
+
 
 int
 main (int argc, char **argv)
@@ -213,12 +258,20 @@ main (int argc, char **argv)
 	 exit(-1);
 	}
 
-	// the_sector = atoi(argv[2]);
 	// here we read the master boot record
 	read_sectors(0, 1, buf);
 	print_partition_table(buf);
 	printf("_____________________________\n");
 	print_partition(buf, the_sector);
+
+
+	unsigned char superBlockOfPart1[ 4*sector_size__bytes ];
+	partition* part1 = (partition *)(buf + lotsOfZeros);
+	read_sectors(part1->start + 2, 2, superBlockOfPart1);
+	print_superBlock(superBlockOfPart1);
+
+	inodeToSector(superBlockOfPart1 , part1->start, 2009);
+
 	close(device);
 	return 0;
 }
