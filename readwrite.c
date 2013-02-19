@@ -18,9 +18,9 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include "fsck.h"
-//#include "ext2_fs.h"
+#include "ext2_fs.h"
 
-#define __FreeBSD__ 1
+//#define __FreeBSD__ 1
 #if defined(__FreeBSD__)
 #define lseek64 lseek
 #endif
@@ -28,7 +28,6 @@
 # define lotsOfZeros 446
 
 /* linux: lseek64 declaration needed here to eliminate compiler warning. */
-// this is for git testing
 extern int64_t lseek64(int, int64_t, int);
 const unsigned int sector_size__bytes = 512;
 const unsigned int block_size_bytes = 1024;
