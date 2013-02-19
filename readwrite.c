@@ -20,6 +20,7 @@
 #include "fsck.h"
 #include "ext2_fs.h"
 #include "genhd.h"
+
 //#define __FreeBSD__ 1
 #if defined(__FreeBSD__)
 #define lseek64 lseek
@@ -149,16 +150,18 @@ void print_partition_table(unsigned char* MBR){
 	int i;
 	unsigned char extended[sector_size__bytes];
 	for (i = 0 ; i < 4 ; i++){
-	    partition* sp = (partition *)(MBR + lotsOfZeros + (16 * i));
-		printf("0x%02X %d %d\n", sp->type, sp->start, sp->length);
-		if(sp->type == 5){
-			int baseStart = sp->start;
-			while(sp->type == 5){
+
+	    struct partition* sp = (struct partition *)(MBR + lotsOfZeros + (16 * i));
+
+		printf("0x%02X %d %d\n", sp->sys_ind, sp->start_sect, sp->nr_sects);
+		if(sp->sys_ind == 5){
+			unsigned int baseStart = sp->start_sect;
+			while(sp->sys_ind == 5){
 				read_sectors(baseStart, 1, extended);
-				partition* logicalPartition = (partition *)(extended + lotsOfZeros);
-				printf("0x%02X %d %d\n", logicalPartition->type, baseStart + logicalPartition->start, logicalPartition->length);
-				sp =  (partition *)(extended + lotsOfZeros + 16);
-				baseStart += sp->start;
+				struct partition* logicalPartition = (struct partition *)(extended + lotsOfZeros);
+				printf("0x%02X %d %d\n", logicalPartition->sys_ind, baseStart + logicalPartition->start_sect, logicalPartition->nr_sects);
+				sp =  (struct partition *)(extended + lotsOfZeros + 16);
+				baseStart += sp->start_sect;
 			}
 		}
 	}
