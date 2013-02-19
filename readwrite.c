@@ -273,21 +273,18 @@ main (int argc, char **argv)
 	// here we read the master boot record
 	read_sectors(0, 1, buf);
 	print_partition_table(buf);
-	printf("_____________________________\n");
+	printf("____________________Below is for tesing purpose___________________\n");
 	print_partition(buf, the_sector);
-
-
 	unsigned char superBlockOfPart1[ 2*sector_size__bytes ];
-
 	struct partition* part1 = (struct partition *)(buf + lotsOfZeros);
-
 	read_sectors(part1->start_sect + 2, 2, superBlockOfPart1);
-
 	struct ext2_super_block* thisSuperBlock = (struct ext2_super_block* )superBlockOfPart1;
-
 	print_superBlock(thisSuperBlock);
+	int rootInodeSectorNum = inodeToSector(thisSuperBlock , part1->start_sect, 1);
+	read_sectors(rootInodeSectorNum, 1, buf);
+	struct ext2_inode* rootInode = (struct ext2_inode*)buf;
 
-	inodeToSector(thisSuperBlock , part1->start_sect, 2013);
+	printf("mode is %d\n", rootInode->i_mode);
 
 	close(device);
 	return 0;
