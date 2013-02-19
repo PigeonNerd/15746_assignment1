@@ -234,8 +234,8 @@ int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, 
 
 	// This is beginning of the inode table
 	unsigned int blockId = thisDesc->bg_inode_table;
-	unsigned int totalSizeInbytes = blockId * block_size_bytes + indexInInodeTable * sizeof(struct ext2_inode);
-	
+	unsigned int totalSizeInbytes = blockId * block_size_bytes + (indexInInodeTable + 1)* sizeof(struct ext2_inode);
+    printf("size of inode is: %lu\n", sizeof(struct ext2_inode));	
 	int numSectors = totalSizeInbytes/sector_size__bytes;
 	if( totalSizeInbytes%sector_size__bytes != 0){
 		numSectors ++;
@@ -287,7 +287,7 @@ main (int argc, char **argv)
 
 	print_superBlock(thisSuperBlock);
 
-	inodeToSector(thisSuperBlock , part1->start_sect, 2010);
+	inodeToSector(thisSuperBlock , part1->start_sect, 2013);
 
 	close(device);
 	return 0;
