@@ -236,12 +236,12 @@ int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, 
 	unsigned int blockId = thisDesc->bg_inode_table;
 	unsigned int totalSizeInbytes = blockId * block_size_bytes + indexInInodeTable * sizeof(struct ext2_inode);
 	
-	int numSectoter = totalSizeInbytes/sector_size__bytes;
+	int numSectors = totalSizeInbytes/sector_size__bytes;
 	if( totalSizeInbytes%sector_size__bytes != 0){
-		numSectoter ++;
+		numSectors ++;
 	}
-	printf("number of sectors is: %d\n", numsectors);
-	return baseSector + numsectors;
+	printf("number of sectors is: %d\n", numSectors);
+	return baseSector + numSectors;
 }
 
 
