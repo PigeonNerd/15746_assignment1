@@ -201,12 +201,12 @@ void print_partition(unsigned char* MBR, int p){
 	print superBlock for partition 1
 */
 
-void print_superBlock(unsigned char* superBlock){
+void print_superBlock(struct ext2_super_block* superBlock){
 
 	//struct ext2_super_block* sb = (struct ext2_super_block *)superBlock;
 	//short magicNum = (short)sb->s_magic;
-	short magicNum = *((short *)(superBlock + 56 ));
-	int totalBlocks = *((int *)(superBlock + 32));
+	unsigned char magicNum = superBlock->s_magic;
+	unsigned int totalBlocks = superBlock->s_blocks_count;
 
 	printf("magic number: 0x%02X\n", magicNum);
 	printf("total number of blocks: %d\n", totalBlocks);
@@ -268,10 +268,15 @@ main (int argc, char **argv)
 	print_partition(buf, the_sector);
 
 
-	unsigned char superBlockOfPart1[ 4*sector_size__bytes ];
-	partition* part1 = (partition *)(buf + lotsOfZeros);
-	read_sectors(part1->start + 2, 2, superBlockOfPart1);
-	print_superBlock(superBlockOfPart1);
+	unsigned char superBlockOfPart1[ 2*sector_size__bytes ];
+
+	struct partition* part1 = (struct partition *)(buf + lotsOfZeros);
+
+	read_sectors(part1->start_sect + 2, 2, superBlockOfPart1);
+
+	struct ext2_super_block* thisSuperBlock = (struct ext2_super_block* )superBlockOfPart1;
+
+	print_superBlock(thisSuperBlock);
 
 	inodeToSector(superBlockOfPart1 , part1->start, 2009);
 
