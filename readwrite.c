@@ -219,17 +219,20 @@ void print_superBlock(struct ext2_super_block* superBlock){
 
 int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, int inodeNum){
 	unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
+	unsigned int blocksPerBlockGroup = superBlock->s_blocks_per_group;
+
 	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
+	int indexInInodeTable = (inodeNum - 1 )%inodesPerBlockGroup;
+
+	printf("group index: %d, inode table index %d, blocks per block group %d\n", groupIndex, indexInInodeTable, blocksPerBlockGroup);
 
 	unsigned char descriptorTable[block_size_bytes];
 	read_sectors(baseSector + 4, 2, descriptorTable);
 
 	struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable + 
 		groupIndex * sizeof(struct ext2_group_desc));
-	
 	unsigned int blockId = thisDesc->bg_inode_table;
-	printf("number of inodes per block group: %d\n", inodesPerBlockGroup);
-	printf("blockId: %d\n", blockId);
+	
 	return 0;
 }
 
