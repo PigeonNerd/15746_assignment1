@@ -221,18 +221,14 @@ int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, 
 	unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
 	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
 
-	unsigned char descriptorTable[block_size_bytes];
+	struct ext2_group_desc descriptorTable;
 
-	read_sectors(baseSector + 4, 2, descriptorTable);
+	read_sectors(baseSector + 4, 2, (unsigned char* )(&descriptorTable));
 
-	//tmp define
-	int decriptorSize = 32; // bytes
-	int blockId = *(int* )(descriptorTable + groupIndex * decriptorSize + 8);
-
-
-
+	int blockId = descriptorTable.bg_inode_table;
 	printf("number of inodes per block group: %d\n", inodesPerBlockGroup);
-	printf(" blockId: %d\n", blockId);
+	printf("blockId: %d\n", blockId);
+
 	return 0;
 }
 
