@@ -281,6 +281,9 @@ main (int argc, char **argv)
 	struct ext2_super_block* thisSuperBlock = (struct ext2_super_block* )superBlockOfPart1;
 	print_superBlock(thisSuperBlock);
 	int rootInodeSectorNum = inodeToSector(thisSuperBlock , part1->start_sect, 1);
+
+	printf("base: %d, root sector: %d\n", part1->start_sect, rootInodeSectorNum);
+	
 	read_sectors(rootInodeSectorNum, 1, buf);
 	struct ext2_inode* rootInode = (struct ext2_inode*)buf;
 
