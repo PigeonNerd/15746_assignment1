@@ -19,7 +19,7 @@
 #include <inttypes.h>
 #include "fsck.h"
 #include "ext2_fs.h"
-
+#include "genhd.h"
 //#define __FreeBSD__ 1
 #if defined(__FreeBSD__)
 #define lseek64 lseek
