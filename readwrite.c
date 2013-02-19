@@ -279,7 +279,7 @@ main (int argc, char **argv)
 
 	print_superBlock(thisSuperBlock);
 
-	inodeToSector(superBlockOfPart1 , part1->start_sect, 2009);
+	inodeToSector(thisSuperBlock , part1->start_sect, 2009);
 
 	close(device);
 	return 0;
