@@ -282,11 +282,13 @@ main (int argc, char **argv)
 	read_sectors(part1->start_sect + 2, 2, superBlockOfPart1);
 	struct ext2_super_block* thisSuperBlock = (struct ext2_super_block* )superBlockOfPart1;
 	print_superBlock(thisSuperBlock);
+	
+	// root inode is at rootInodeSectorNum, so start to read from rootInodeSectorNum - 1 
 	int rootInodeSectorNum = inodeToSector(thisSuperBlock , part1->start_sect, 1);
 
 	printf("base: %d, root sector: %d\n", part1->start_sect, rootInodeSectorNum);
 
-	read_sectors(rootInodeSectorNum, 1, buf);
+	read_sectors(rootInodeSectorNum - 1, 1, buf);
 	struct ext2_inode* rootInode = (struct ext2_inode*)buf;
 
 	printf("mode is %d\n", rootInode->i_mode);
