@@ -183,7 +183,7 @@ void print_partition(unsigned char* MBR, int p){
 		unsigned int baseStart = 0;
 		int i;
 		for(i=5; i <= p ; i ++){
-			baseStart += sp->start;
+			baseStart += sp->start_sect;
 			if(sp->sys_ind == 5){
 			read_sectors(baseStart, 1, extended);
 			sp =  (struct partition *)(extended + lotsOfZeros + 16);
