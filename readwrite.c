@@ -100,6 +100,24 @@ read_sectors (int64_t block, unsigned int numsectors, void *into)
   }
 }
 
+void readBuf(int64_t block, size_t len, void* into){
+  int ret;
+  int64_t lret;
+  if ((lret = lseek64(device, block, SEEK_SET)) 
+      != block) {
+    fprintf(stderr, "Seek to position %"PRId64" failed: returned %"PRId64"\n", 
+	    block, lret);
+    exit(-1);
+  }
+  if ((ret = read(device, into, len )) 
+      != len) {
+    fprintf(stderr, "Read block %"PRId64" length %d failed: returned %"PRId64"\n", 
+	    block,ret);
+    exit(-1);
+  }
+}
+
+
 
 /* write_sectors: write a buffer into a specified number of sectors.
  *
@@ -208,9 +226,13 @@ void print_superBlock(struct ext2_super_block* superBlock){
 	unsigned char magicNum = superBlock->s_magic;
 	unsigned int totalBlocks = superBlock->s_blocks_count;
 	unsigned int totalInodes = superBlock->s_inodes_count;
+    unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
+	unsigned int blocksPerBlockGroup = superBlock->s_blocks_per_group;
 	printf("magic number: 0x%02X\n", magicNum);
 	printf("total number of blocks: %d\n", totalBlocks);
 	printf("total number of inodes: %d\n", totalInodes);
+    printf("number of inodes per block group: %d\n", inodesPerBlockGroup);
+    printf("number of blocks per block group: %d\n", blocksPerBlockGroup);
 }
 
 /*
@@ -219,13 +241,10 @@ void print_superBlock(struct ext2_super_block* superBlock){
 
 int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, int inodeNum){
 	unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
-	unsigned int blocksPerBlockGroup = superBlock->s_blocks_per_group;
-
 	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
 	int indexInInodeTable = (inodeNum - 1 )%inodesPerBlockGroup;
-
-	printf("group index: %d, inode table index %d, blocks per block group %d\n", groupIndex, indexInInodeTable, blocksPerBlockGroup);
-
+    
+	printf("group index: %d, inode table index %d\n", groupIndex, indexInInodeTable);
 	unsigned char descriptorTable[block_size_bytes];
 	read_sectors(baseSector + 4, 2, descriptorTable);
 
@@ -234,18 +253,118 @@ int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, 
 
 	// This is beginning of the inode table
 	unsigned int blockId = thisDesc->bg_inode_table;
-	unsigned int totalSizeInbytes = blockId * block_size_bytes + (indexInInodeTable + 1)* sizeof(struct ext2_inode);
-    
+	unsigned int totalSizeInbytes = blockId * block_size_bytes + (indexInInodeTable)* sizeof(struct ext2_inode);
     printf("Inode table is at block %d\n", blockId);
 
-	int numSectors = totalSizeInbytes/sector_size__bytes;
-	if( totalSizeInbytes%sector_size__bytes != 0){
-		numSectors ++;
-	}
+    int numSectors = totalSizeInbytes/sector_size__bytes;
 	printf("number of sectors is: %d\n", numSectors);
 	return baseSector + numSectors;
 }
 
+struct ext2_inode* getInode(struct ext2_super_block* superBlock, unsigned int baseSector, int inodeNum){
+	unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
+	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
+	int indexInInodeTable = (inodeNum - 1 )%inodesPerBlockGroup;
+    
+	printf("group index: %d, inode table index %d\n", groupIndex, indexInInodeTable);
+	unsigned char descriptorTable[block_size_bytes];
+	read_sectors(baseSector + 4, 2, descriptorTable);
+
+	struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable + 
+		groupIndex * sizeof(struct ext2_group_desc));
+
+	// This is beginning of the inode table
+	unsigned int blockId = thisDesc->bg_inode_table;
+	unsigned int startBytes = baseSector*sector_size__bytes + blockId * block_size_bytes + (indexInInodeTable)* sizeof(struct ext2_inode);
+    unsigned char in[sector_size__bytes];
+    readBuf(startBytes, sector_size__bytes, in);
+    struct ext2_inode* inode = (struct ext2_inode*)in;
+    return inode;
+}
+
+
+
+/*
+ * test inode in inode bitmap 
+ */
+int isInodeInBitMap(struct ext2_super_block* superBlock, int inodeNum, unsigned int baseSector){
+	
+    unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
+	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
+	int indexInInodeTable = (inodeNum - 1 )%inodesPerBlockGroup;
+	unsigned char descriptorTable[block_size_bytes];
+	read_sectors(baseSector + 4, 2, descriptorTable);
+	struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable + 
+		groupIndex * sizeof(struct ext2_group_desc));
+    unsigned int bitMapBlockId = thisDesc->bg_inode_bitmap;
+    unsigned char bitMap[2*sector_size__bytes];
+    read_sectors(baseSector + bitMapBlockId * 2, 2, bitMap);
+    print_sector(bitMap); 
+    int byteOffset = indexInInodeTable/8;
+    int bitOffset = indexInInodeTable%8;
+    printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
+    unsigned char thisByte = bitMap[byteOffset];
+    return thisByte && (1<<bitOffset);
+}
+
+
+
+char* nextToken(char* path){
+    path++;
+    char* start = path;
+    int size = 0;
+    while(*path != '/' && *path){
+        size++;
+        path++;
+    }
+    char* token = malloc(1+sizeof(char)*size);
+    memcpy(token, start, size);
+    token[size] = 0;
+    return token;
+}
+
+
+
+/*
+ * print dirctory inode 
+ */
+int getInodeNumBasedOnPath(struct ext2_inode* inode, unsigned int baseSector, char* path){
+    // here we actually need to go through every block including indirect block
+    unsigned int blockId = inode->i_block[0];
+    printf("size of %s %d\n", path,  strlen(path));
+    unsigned char block[2*sector_size__bytes];
+    read_sectors(baseSector + blockId*2, 2, block);
+    struct ext2_dir_entry_2* entry = (struct ext2_dir_entry_2* )block;
+    int size;
+    size = 0;
+    while(size < inode->i_size && entry->inode != 0){
+        char file_name[EXT2_NAME_LEN +1];
+        memcpy(file_name, entry->name, entry->name_len);
+        file_name[entry->name_len] = 0;
+        if(strncmp(file_name, path, strlen(path)) == 0){
+            printf("Found it ! %10u %s\n", entry->inode, file_name);
+            return entry->inode;
+        }
+        entry = (void*)entry + entry->rec_len;
+        size += entry->rec_len;
+    }
+    return -1;
+}
+
+struct ext2_inode* findInodeBasedOnPath(struct ext2_super_block* superBlock,
+        struct ext2_inode* inode, unsigned int baseSector, char path []){
+    path++;
+    int inodeNum;
+    struct ext2_inode* thisInode = inode;
+    char* token = strtok(path, "/");
+    while(token != NULL){
+        printf("%s\n", token);
+        inodeNum = getInodeNumBasedOnPath(thisInode, baseSector, token);
+        thisInode = getInode(superBlock, baseSector, inodeNum);
+        token = strtok(NULL,"/");
+    }
+    return thisInode;
+}
 
 
 int
@@ -279,21 +398,33 @@ main (int argc, char **argv)
 	print_partition(buf, the_sector);
 	unsigned char superBlockOfPart1[ 2*sector_size__bytes ];
 	struct partition* part1 = (struct partition *)(buf + lotsOfZeros);
-	read_sectors(part1->start_sect + 2, 2, superBlockOfPart1);
+	
+    int p1_start = part1->start_sect;
+    read_sectors(p1_start + 2, 2, superBlockOfPart1);
 	struct ext2_super_block* thisSuperBlock = (struct ext2_super_block* )superBlockOfPart1;
 	print_superBlock(thisSuperBlock);
 	
-	// root inode is at rootInodeSectorNum, so start to read from rootInodeSectorNum - 1 
-	int rootInodeSectorNum = inodeToSector(thisSuperBlock , part1->start_sect, 1);
+	int rootInodeSectorNum = inodeToSector(thisSuperBlock , p1_start, 2);
+	printf("base: %d, root sector: %d\n", p1_start, rootInodeSectorNum);
+	read_sectors(rootInodeSectorNum, 1, buf);
 
-	printf("base: %d, root sector: %d\n", part1->start_sect, rootInodeSectorNum);
+	struct ext2_inode* rootInode = (struct ext2_inode*)(buf + 128);
+    if(S_ISDIR(rootInode->i_mode)){
+        printf("This is dir\n");
+    }else{
+        printf("This is junk\n");
+    }
+    
+   int yes =  isInodeInBitMap(thisSuperBlock, 2, p1_start);
+   
+   if(yes){
+        printf("root inode is set\n");
+   }
 
-	read_sectors(rootInodeSectorNum - 1, 1, buf);
-	struct ext2_inode* rootInode = (struct ext2_inode*)buf;
-
-	printf("mode is %d\n", rootInode->i_mode);
-
-	close(device);
+    struct ext2_inode* hahInode = getInode(thisSuperBlock, p1_start, 2);
+    char path[] = "/oz/tornado/dorothy"; 
+    struct ext2_inode* targetInode = findInodeBasedOnPath(thisSuperBlock, hahInode, p1_start, path);
+    close(device);
 	return 0;
 }
 
