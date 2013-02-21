@@ -196,10 +196,15 @@ int64_t print_partition(unsigned char* MBR, int p){
 		printf("0x%02X %d %d\n", sp->sys_ind, sp->start_sect, sp->nr_sects);
     return sp->start_sect;
 	}else{
-		sp = (struct partition *)(MBR + lotsOfZeros + (16 * 3));
-		unsigned char extended[sector_size__bytes];
-		unsigned int baseStart = 0;
 		int i;
+	    for(i = 0; i < 5; i++){
+            sp = (struct partition *)(MBR + lotsOfZeros + 16 * i);
+            if(sp->sys_ind == 5){
+                break;
+            }
+        }
+        unsigned char extended[sector_size__bytes];
+		unsigned int baseStart = 0;
 		for(i=5; i <= p ; i ++){
 			baseStart += sp->start_sect;
 			if(sp->sys_ind == 5){
