@@ -17,7 +17,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include "fsck.h"
 #include "ext2_fs.h"
 #include "genhd.h"
 

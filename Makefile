@@ -12,7 +12,7 @@ all: ${BINS}
 
 run: myfsck
 	./myfsck -p ${K} -i disk
-
+	rm -f *.o $(BINS)
 myfsck: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
 
