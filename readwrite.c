@@ -317,12 +317,12 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
     //unsigned char descriptorTable[block_size_bytes];
 	
   //read_sectors(baseSector + 4, 2, descriptorTable);
-	//struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable + 
+	//struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable +
+ //groupIndex * sizeof(struct ext2_group_desc));
 		struct ext2_group_desc* thisDesc = malloc(sizeof(struct ext2_group_desc));
     read_blockDesc(baseSector, groupIndex, thisDesc);
 
 
-    groupIndex * sizeof(struct ext2_group_desc));
     unsigned int bitMapBlockId = thisDesc->bg_block_bitmap;
     int offset = blockId - bitMapBlockId - 216; 
 	printf("OFFSET IS %d\n", offset);
