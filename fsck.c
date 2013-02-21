@@ -205,16 +205,17 @@ int64_t print_partition(unsigned char* MBR, int p){
         }
         unsigned char extended[sector_size__bytes];
 		unsigned int baseStart = sp->start_sect;
-		unsigned int logiStart = baseStart;
+		unsigned int extendedStart = baseStart; 
+        unsigned int logiStart = 0;
         for(i=5; i <= p ; i ++){
-  		    	read_sectors(baseStart, 1, extended);
+  		    	read_sectors(extendedStart, 1, extended);
 		        logicalPartition = (struct partition *)(extended + lotsOfZeros);
-  			    sp =  (struct partition *)(extended + lotsOfZeros + 16);
-                logiStart = baseStart + logicalPartition->start_sect;
-                printf("type %d EXTENDED @ %d, ", sp->sys_ind, sp->start_sect);
-                printf("type %d LOGICAL @ %d ---------",logicalPartition->sys_ind, logicalPartition->start_sect);
+                logiStart = extendedStart + logicalPartition->start_sect;
+                sp =  (struct partition *)(extended + lotsOfZeros + 16);
+                //printf("type %d EXTENDED @ %d, ", sp->sys_ind, sp->start_sect);
+                //printf("type %d LOGICAL @ %d ---------",logicalPartition->sys_ind, logicalPartition->start_sect);
 			if(sp->sys_ind == 5 && i != p){
-                baseStart += sp->start_sect;
+                extendedStart = baseStart + sp->start_sect;
             }else if( sp->sys_ind != 5 && i !=p ){
 				printf("%d\n", -1);
 				return sp->start_sect;
