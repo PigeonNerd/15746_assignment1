@@ -210,11 +210,11 @@ int64_t print_partition(unsigned char* MBR, int p){
   		    	read_sectors(baseStart, 1, extended);
 		        logicalPartition = (struct partition *)(extended + lotsOfZeros);
   			    sp =  (struct partition *)(extended + lotsOfZeros + 16);
+                logiStart = baseStart + logicalPartition->start_sect;
                 //printf("EXTENDED @ %d ------ \n", sp->start_sect);
                 //printf("LOGICAL @ %d\n", logicalPartition->start_sect);
-			if(sp->sys_ind == 5){
+			if(sp->sys_ind == 5 && i != p){
                 baseStart += sp->start_sect;
-                logiStart = baseStart + logicalPartition->start_sect;
             }else if( sp->sys_ind != 5 && i !=p ){
 				printf("%d\n", -1);
 				return sp->start_sect;
