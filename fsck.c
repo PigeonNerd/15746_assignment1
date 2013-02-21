@@ -209,6 +209,7 @@ int64_t print_partition(unsigned char* MBR, int p){
   		    	read_sectors(baseStart, 1, extended);
   			    sp =  (struct partition *)(extended + lotsOfZeros + 16);
 			if(sp->sys_ind == 5 && i != p){
+                printf("EXTENDED @ %d ------ ", sp->start_sect);
                 baseStart += sp->start_sect;
             }else if( sp->sys_ind != 5 && i !=p ){
 				printf("%d\n", -1);
