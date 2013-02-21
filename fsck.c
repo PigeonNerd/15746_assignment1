@@ -204,19 +204,19 @@ int64_t print_partition(unsigned char* MBR, int p){
             }
         }
         unsigned char extended[sector_size__bytes];
-		unsigned int baseStart = 0;
+		unsigned int baseStart = sp->start_sect;
 		for(i=5; i <= p ; i ++){
-			baseStart += sp->start_sect;
-			if(sp->sys_ind == 5){
-  			read_sectors(baseStart, 1, extended);
-  			sp =  (struct partition *)(extended + lotsOfZeros + 16);
-			}else{
+  		    	read_sectors(baseStart, 1, extended);
+  			    sp =  (struct partition *)(extended + lotsOfZeros + 16);
+			if(sp->sys_ind == 5 && i != p){
+                baseStart += sp->start_sect;
+            }else if( sp->sys_ind != 5 && i !=p ){
 				printf("%d\n", -1);
 				return sp->start_sect;
 			}
 		}
 		struct partition* logicalPartition = (struct partition *)(extended + lotsOfZeros);
-		printf("0x%02X %d %d\n", logicalPartition->sys_ind, baseStart + logicalPartition->start_sect, logicalPartition->nr_sects);
+		printf("0x%02X %d %d\n", logicalPartition->sys_ind, baseStart +  logicalPartition->start_sect, logicalPartition->nr_sects);
 	  return sp->start_sect;
   }
 }
