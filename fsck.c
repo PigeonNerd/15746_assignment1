@@ -190,7 +190,7 @@ void print_partition_table(unsigned char* MBR){
 
 int64_t print_partition(unsigned char* MBR, int p){
 	struct partition* sp;
-	
+	struct partition* logicalPartition; 
 	if(p < 5){
 		sp = (struct partition *)(MBR + lotsOfZeros + 16*(p-1));
 		printf("0x%02X %d %d\n", sp->sys_ind, sp->start_sect, sp->nr_sects);
@@ -205,19 +205,22 @@ int64_t print_partition(unsigned char* MBR, int p){
         }
         unsigned char extended[sector_size__bytes];
 		unsigned int baseStart = sp->start_sect;
-		for(i=5; i <= p ; i ++){
+		unsigned int logiStart = baseStart;
+        for(i=5; i <= p ; i ++){
   		    	read_sectors(baseStart, 1, extended);
+		        logicalPartition = (struct partition *)(extended + lotsOfZeros);
   			    sp =  (struct partition *)(extended + lotsOfZeros + 16);
-			if(sp->sys_ind == 5 && i != p){
-                printf("EXTENDED @ %d ------ ", sp->start_sect);
+                //printf("EXTENDED @ %d ------ \n", sp->start_sect);
+                //printf("LOGICAL @ %d\n", logicalPartition->start_sect);
+			if(sp->sys_ind == 5){
                 baseStart += sp->start_sect;
+                logiStart = baseStart + logicalPartition->start_sect;
             }else if( sp->sys_ind != 5 && i !=p ){
 				printf("%d\n", -1);
 				return sp->start_sect;
 			}
 		}
-		struct partition* logicalPartition = (struct partition *)(extended + lotsOfZeros);
-		printf("0x%02X %d %d\n", logicalPartition->sys_ind, baseStart +  logicalPartition->start_sect, logicalPartition->nr_sects);
+		printf("0x%02X %d %d\n", logicalPartition->sys_ind, logiStart, logicalPartition->nr_sects);
 	  return sp->start_sect;
   }
 }
