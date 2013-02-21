@@ -260,7 +260,10 @@ int inodeToSector(struct ext2_super_block* superBlock, unsigned int baseSector, 
 	printf("number of sectors is: %d\n", numSectors);
 	return baseSector + numSectors;
 }
-
+/*
+ *  This is a similar function, but instead of resturning the sector number
+ *  of a inode, it returns the actual inode
+ */
 struct ext2_inode* getInode(struct ext2_super_block* superBlock, unsigned int baseSector, int inodeNum){
 	unsigned int inodesPerBlockGroup = superBlock->s_inodes_per_group;
 	int groupIndex = (inodeNum - 1 )/inodesPerBlockGroup;
@@ -281,11 +284,8 @@ struct ext2_inode* getInode(struct ext2_super_block* superBlock, unsigned int ba
     struct ext2_inode* inode = (struct ext2_inode*)in;
     return inode;
 }
-
-
-
 /*
- * test inode in inode bitmap 
+ * test the inode is set inode bitmap 
  */
 int isInodeInBitMap(struct ext2_super_block* superBlock, int inodeNum, unsigned int baseSector){
 	
@@ -306,24 +306,30 @@ int isInodeInBitMap(struct ext2_super_block* superBlock, int inodeNum, unsigned 
     unsigned char thisByte = bitMap[byteOffset];
     return thisByte && (1<<bitOffset);
 }
-
-
-
-char* nextToken(char* path){
-    path++;
-    char* start = path;
-    int size = 0;
-    while(*path != '/' && *path){
-        size++;
-        path++;
-    }
-    char* token = malloc(1+sizeof(char)*size);
-    memcpy(token, start, size);
-    token[size] = 0;
-    return token;
+/*
+ *  test if blocks are set in block bitmap
+ */
+int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
+        unsigned int baseSector){
+    printf("Test block %d...................\n", blockId);
+    unsigned int blocksPerGroup = superBlock->s_blocks_per_group;
+    int groupIndex = blockId/blocksPerGroup;
+    unsigned char descriptorTable[block_size_bytes];
+	read_sectors(baseSector + 4, 2, descriptorTable);
+	struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable + 
+		groupIndex * sizeof(struct ext2_group_desc));
+    unsigned int bitMapBlockId = thisDesc->bg_block_bitmap;
+    int offset = blockId - bitMapBlockId - 216; 
+	printf("OFFSET IS %d\n", offset);
+    unsigned char bitMap[2*sector_size__bytes];
+    read_sectors(baseSector + bitMapBlockId * 2, 2, bitMap);
+    int byteOffset = offset/8;
+    int bitOffset = offset%8;
+    printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
+    unsigned char thisByte = bitMap[byteOffset];
+    print_sector(bitMap);
+    return thisByte && (1<<bitOffset);
 }
-
-
 
 /*
  * print dirctory inode 
@@ -331,7 +337,6 @@ char* nextToken(char* path){
 int getInodeNumBasedOnPath(struct ext2_inode* inode, unsigned int baseSector, char* path){
     // here we actually need to go through every block including indirect block
     unsigned int blockId = inode->i_block[0];
-    printf("size of %s %d\n", path,  strlen(path));
     unsigned char block[2*sector_size__bytes];
     read_sectors(baseSector + blockId*2, 2, block);
     struct ext2_dir_entry_2* entry = (struct ext2_dir_entry_2* )block;
@@ -366,11 +371,9 @@ struct ext2_inode* findInodeBasedOnPath(struct ext2_super_block* superBlock,
     return thisInode;
 }
 
-
 int
 main (int argc, char **argv)
 {
-  
 	unsigned char buf[sector_size__bytes];	/* temporary buffer */
 	int           the_sector;			/* IN: sector to read */
 	char* 		  disk;
@@ -422,8 +425,19 @@ main (int argc, char **argv)
    }
 
     struct ext2_inode* hahInode = getInode(thisSuperBlock, p1_start, 2);
-    char path[] = "/oz/tornado/dorothy"; 
+    char path[] = "/lions/tigers/bears/ohmy.txt"; 
     struct ext2_inode* targetInode = findInodeBasedOnPath(thisSuperBlock, hahInode, p1_start, path);
+   
+   int blockIndex;
+   int numBlocks = targetInode->i_blocks/(2<<thisSuperBlock->s_log_block_size);
+   printf("num blocks is: %d\n", targetInode->i_blocks);
+   for(blockIndex = 0; blockIndex < 1 ; blockIndex ++){
+       unsigned int blockId = targetInode->i_block[blockIndex];
+       yes = isBlockInBitMap( thisSuperBlock, blockId, p1_start);
+       if(yes){
+        printf("block %d is set\n", blockId);
+       }
+   }
     close(device);
 	return 0;
 }
