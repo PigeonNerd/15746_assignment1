@@ -216,6 +216,25 @@ void print_partition(unsigned char* MBR, int p){
 }
 
 /*
+    read the super block for a partition
+*/
+void read_superBlock(unsigned int baseSector, 
+        struct ext2_super_block* superBlock){
+  read_sectors(baseSector + 2, 2, (void* )superBlock);
+}
+
+/*
+    read the block descriptor
+*/
+
+void read_blockDesc(unsigned int baseSector, int groupIndex, 
+    struct ext2_group_desc* descriptor){
+    unsigned int start = (baseSector + 4)*sector_size__bytes 
+      + groupIndex * sizeof(struct ext2_group_desc);
+    readBuf(start, sizeof(struct ext2_group_desc), (void *) descriptor);
+}
+
+/*
 	print superBlock for partition 1
 */
 
@@ -375,24 +394,7 @@ struct ext2_inode* findInodeBasedOnPath(struct ext2_super_block* superBlock,
     }
     return thisInode;
 }
-/*
-    read the super block for a partition
-*/
-void read_superBlock(unsigned int baseSector, 
-        struct ext2_super_block* superBlock){
-  read_sectors(baseSector + 2, 2, (void* )superBlock);
-}
 
-/*
-    read the block descriptor
-*/
-
-void read_blockDesc(unsigned int baseSector, int groupIndex, 
-    struct ext2_group_desc* descriptor){
-    unsigned int start = (baseSector + 4)*sector_size__bytes 
-      + groupIndex * sizeof(struct ext2_group_desc);
-    readBuf(start, sizeof(struct ext2_group_desc), (void *) descriptor);
-}
 
 
 int
