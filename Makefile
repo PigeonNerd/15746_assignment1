@@ -15,7 +15,8 @@ run: myfsck
 	rm -f *.o $(BINS)
 myfsck: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
-
+submit:
+	tar -cvf myfsck.tar *.c *.h Makefile 
 clean:
 	rm -f *.o $(BINS)
 

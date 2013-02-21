@@ -426,7 +426,7 @@ void part2Test(){
 int
 main (int argc, char **argv)
 {
-	unsigned char buf[sector_size__bytes];	/* temporary buffer */
+	unsigned char MBR[sector_size__bytes];	/* temporary buffer */
 	int           partitionToRead;			/* IN: partition to read */
 	char* 		  disk;
 	char 		  op;
@@ -438,14 +438,20 @@ main (int argc, char **argv)
 			case 'p':
 				partitionToRead = atoi(optarg);
 				break;
-		}
+            case 'f':
+                break;
+        }
 	}
 	if ((device = open(disk, O_RDWR)) == -1) {
 	 perror("Could not open device file");
 	 exit(-1);
 	}   
-  part2Test();
-  close(device);
+  //part2Test();
+  
+    
+    read_sectors(0, 1, MBR);
+    print_partition(MBR, partitionToRead);
+    close(device);
 	return 0;
 }
 
