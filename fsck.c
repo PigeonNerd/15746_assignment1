@@ -211,8 +211,8 @@ int64_t print_partition(unsigned char* MBR, int p){
 		        logicalPartition = (struct partition *)(extended + lotsOfZeros);
   			    sp =  (struct partition *)(extended + lotsOfZeros + 16);
                 logiStart = baseStart + logicalPartition->start_sect;
-                //printf("EXTENDED @ %d ------ \n", sp->start_sect);
-                //printf("LOGICAL @ %d\n", logicalPartition->start_sect);
+                printf("type %d EXTENDED @ %d, ", sp->sys_ind, sp->start_sect);
+                printf("type %d LOGICAL @ %d ---------",logicalPartition->sys_ind, logicalPartition->start_sect);
 			if(sp->sys_ind == 5 && i != p){
                 baseStart += sp->start_sect;
             }else if( sp->sys_ind != 5 && i !=p ){
