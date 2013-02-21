@@ -314,10 +314,15 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
     printf("Test block %d...................\n", blockId);
     unsigned int blocksPerGroup = superBlock->s_blocks_per_group;
     int groupIndex = blockId/blocksPerGroup;
-    unsigned char descriptorTable[block_size_bytes];
-	read_sectors(baseSector + 4, 2, descriptorTable);
-	struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable + 
-		groupIndex * sizeof(struct ext2_group_desc));
+    //unsigned char descriptorTable[block_size_bytes];
+	
+  //read_sectors(baseSector + 4, 2, descriptorTable);
+	//struct ext2_group_desc* thisDesc = (struct ext2_group_desc*)(descriptorTable + 
+		struct ext2_group_desc* thisDesc = malloc(sizeof(struct ext2_group_desc));
+    read_blockDesc(baseSector, groupIndex, thisDesc);
+
+
+    groupIndex * sizeof(struct ext2_group_desc));
     unsigned int bitMapBlockId = thisDesc->bg_block_bitmap;
     int offset = blockId - bitMapBlockId - 216; 
 	printf("OFFSET IS %d\n", offset);
@@ -370,6 +375,25 @@ struct ext2_inode* findInodeBasedOnPath(struct ext2_super_block* superBlock,
     }
     return thisInode;
 }
+/*
+    read the super block for a partition
+*/
+void read_superBlock(unsigned int baseSector, 
+        struct ext2_super_block* superBlock){
+  read_sectors(baseSector + 2, 2, (void* )superBlock);
+}
+
+/*
+    read the block descriptor
+*/
+
+void read_blockDesc(unsigned int baseSector, int groupIndex, 
+    struct ext2_group_desc* descriptor){
+    unsigned int start = (baseSector + 4)*sector_size__bytes 
+      + groupIndex * sizeof(struct ext2_group_desc);
+    readBuf(start, sizeof(struct ext2_group_desc), (void *) descriptor);
+}
+
 
 int
 main (int argc, char **argv)
