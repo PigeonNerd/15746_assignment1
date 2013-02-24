@@ -358,14 +358,6 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
     return thisByte && (1<<bitOffset);
 }
 
-/*
- *  print out all of the directory of this file system
- */
-void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseSector){
-    struct ext2_inode rootInode;
-    read_inode(superBlock, baseSector, 2, &rootInode);
-    print_directory(&rootInode, baseSector);
-}
 
 /*
     read direct block
@@ -387,18 +379,18 @@ void read_direct_blocks(unsigned int baseSector, unsigned int blocks[],
 void read_single_indirect_blocks(unsigned int baseSector, unsigned int single_inDirectBlockId, 
                                       int* numBlocks, unsigned char* current){
       
-      unsigned char single_inDirectBlock[block_size_bytes];
-      read_sectors(baseSector + single_inDirectBlockId*2, 2, single_inDirectBlock);
-      int indirectBlockIndex;
-      for(indirectBlockIndex = 0; indirectBlockIndex < block_size_bytes/4; indirectBlockIndex++){
-          unsigned int blockId = *(unsigned int *)((void*)single_inDirectBlock + indirectBlockIndex * 4);
-          read_sectors(baseSector + blockId * 2, 2, current);
-          current += block_size_bytes;
-          (*numBlocks)--;
-          if(*numBlocks == 0){
-            return;
-          }
+    unsigned char single_inDirectBlock[block_size_bytes];
+    read_sectors(baseSector + single_inDirectBlockId*2, 2, single_inDirectBlock);
+    int indirectBlockIndex;
+    for(indirectBlockIndex = 0; indirectBlockIndex < block_size_bytes/4; indirectBlockIndex++){
+        unsigned int blockId = *(unsigned int *)((void*)single_inDirectBlock + indirectBlockIndex * 4);
+        read_sectors(baseSector + blockId * 2, 2, current);
+        current += block_size_bytes;
+        (*numBlocks)--;
+        if(*numBlocks == 0){
+          return;
         }
+      }
 }
 
 /*
@@ -407,17 +399,17 @@ void read_single_indirect_blocks(unsigned int baseSector, unsigned int single_in
 */
 void read_double_indirect_blocks(unsigned int baseSector, unsigned int double_inDirectBlockId, 
                                       int* numBlocks, unsigned char* current){
-      
-      unsigned char double_inDirectBlock[block_size_bytes];
-      read_sectors(baseSector + double_inDirectBlockId * 2, 2, double_inDirectBlock);
-      int doubleIndirectBlockIndex;
-      for(doubleIndirectBlockIndex = 0; doubleIndirectBlockIndex < block_size_bytes/4; doubleIndirectBlockIndex++){
-        unsigned int single_inDirectBlockId = *(unsigned int*)((void*)double_inDirectBlock + doubleIndirectBlockIndex * 4);
-        read_single_indirect_blocks(baseSector, single_inDirectBlockId, numBlocks, current);
-        if(*numBlocks == 0){
-          return;
-        }
+    
+    unsigned char double_inDirectBlock[block_size_bytes];
+    read_sectors(baseSector + double_inDirectBlockId * 2, 2, double_inDirectBlock);
+    int doubleIndirectBlockIndex;
+    for(doubleIndirectBlockIndex = 0; doubleIndirectBlockIndex < block_size_bytes/4; doubleIndirectBlockIndex++){
+      unsigned int single_inDirectBlockId = *(unsigned int*)((void*)double_inDirectBlock + doubleIndirectBlockIndex * 4);
+      read_single_indirect_blocks(baseSector, single_inDirectBlockId, numBlocks, current);
+      if(*numBlocks == 0){
+        return;
       }
+    }
 }
 
 /*
@@ -482,6 +474,15 @@ void print_directory(struct ext2_inode* inode, unsigned int baseSector){
         printf("%10u %s, type:  %d, rec len: %d\n", entry->inode, file_name, entry->file_type, entry->rec_len);
     }
     printf("at the end, size is %d\n", size);
+}
+
+/*
+ *  print out all of the directory of this file system
+ */
+void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseSector){
+    struct ext2_inode rootInode;
+    read_inode(superBlock, baseSector, 2, &rootInode);
+    print_directory(&rootInode, baseSector);
 }
 
 /*
