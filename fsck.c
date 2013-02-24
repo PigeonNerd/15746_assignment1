@@ -358,6 +358,18 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
 }
 
 /*
+ *  print out all of the directory of this file system
+ */
+
+void printAllDirectory(struct ext2_super_block * superBlock, unsigned int baseSector){
+    int blockIndex = 0;
+    int size = 0;
+    unsigned char block[2*sector_size__bytes];
+    struct ext2_dir_entry_2* entry =     
+
+}
+
+/*
     get inode number for the target file/dir
     if not exist, return -1;
  */
@@ -369,18 +381,21 @@ int getInodeNumBasedOnPath(struct ext2_inode* inode, unsigned int baseSector, ch
     struct ext2_dir_entry_2* entry = (struct ext2_dir_entry_2* )block;
     int size;
     size = 0;
-    while(size < inode->i_size && entry->inode != 0){
+    
+    printf("inode record size is %d\n", inode->i_size);
+ 
+     while(size < inode->i_size && entry->inode != 0){
         char file_name[EXT2_NAME_LEN +1];
         memcpy(file_name, entry->name, entry->name_len);
         file_name[entry->name_len] = 0;
         if(strncmp(file_name, path, strlen(path)) == 0){
-            printf("Found it ! %10u %s\n", entry->inode, file_name);
+            printf("Found it ! %10u %s, type  %d\n", entry->inode, file_name, entry->file_type);
             return entry->inode;
         }
         entry = (void*)entry + entry->rec_len;
         size += entry->rec_len;
     }
-    return -1;
+     return -1;
 }
 void findInodeBasedOnPath(struct ext2_super_block* superBlock,
          unsigned int baseSector, char path [], struct ext2_inode* inode){
@@ -423,14 +438,18 @@ void part2Test(){
       printf("root inode is set\n");
     }
     struct ext2_inode targetInode;
-    char path[] = "/lions/tigers/bears/ohmy.txt";  
+    char path[] = "/oz/tornado/glinda";  
     findInodeBasedOnPath(&superBlock, baseSector, path, &targetInode);
     unsigned int blockId = targetInode.i_block[0];
-    yes = isBlockInBitMap(&superBlock, blockId, baseSector);
-    if(yes){
-      printf("block %d is set\n", blockId);
-    }
+    
+    printf("%s\n", (char*)targetInode.i_block);
+   
+    //yes = isBlockInBitMap(&superBlock, blockId, baseSector);
+    //if(yes){
+      //printf("block %d is set\n", blockId);
+    //}
 }
+
 
 
 int
@@ -456,7 +475,7 @@ main (int argc, char **argv)
 	 perror("Could not open device file");
 	 exit(-1);
 	}   
-  //part2Test();
+    part2Test();
   
     
     read_sectors(0, 1, MBR);
