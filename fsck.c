@@ -447,7 +447,7 @@ void part2Test(){
     read_superBlock(baseSector, &superBlock);
     print_superBlock(&superBlock);
 
-    print_all_directory(superBlock, baseSector);
+    print_all_directory(&superBlock, baseSector);
 
 
 
