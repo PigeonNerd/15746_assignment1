@@ -26,6 +26,7 @@
 #endif
 
 #define lotsOfZeros 446
+#define minOfTwo(x, y) ((x > y) ? y : x)
 
 /* linux: lseek64 declaration needed here to eliminate compiler warning. */
 extern int64_t lseek64(int, int64_t, int);
@@ -360,12 +361,102 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
 /*
  *  print out all of the directory of this file system
  */
-
 void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseSector){
     struct ext2_inode rootInode;
     read_inode(superBlock, baseSector, 2, &rootInode);
     print_directory(&rootInode, baseSector);
 }
+
+/*
+    read direct block
+*/
+void read_direct_blocks(unsigned int baseSector, unsigned int blocks[], 
+                                      int numBlocks, unsigned char* current){
+    int num_direct_blocks = minOfTwo(numBlocks, 12);
+    int blockIndex;
+    for(blockIndex = 0 ; blockIndex < num_direct_blocks; blockIndex++) {
+      unsigned int blockId = blocks[blockIndex];
+      read_sectors(baseSector + blockId*2, 2, current);
+      current += block_size_bytes;
+    }
+}
+
+/*
+    read single indirect block
+*/
+void read_single_indirect_blocks(unsigned int baseSector, unsigned int single_inDirectBlockId, 
+                                      int* numBlocks, unsigned char* current){
+      
+      unsigned char single_inDirectBlock[block_size_bytes];
+      read_sectors(baseSector + single_inDirectBlockId*2, 2, single_inDirectBlock);
+      int indirectBlockIndex;
+      for(indirectBlockIndex = 0; indirectBlockIndex < block_size_bytes/4; indirectBlockIndex++){
+          unsigned int blockId = *(unsigned int *)((void*)single_inDirectBlock + indirectBlockIndex * 4);
+          read_sectors(baseSector + blockId * 2, 2, current);
+          current += block_size_bytes;
+          (*numBlocks)--;
+          if(*numBlocks == 0){
+            return;
+          }
+        }
+}
+
+/*
+    read double indirect block
+
+*/
+void read_double_indirect_blocks(unsigned int baseSector, unsigned int double_inDirectBlockId, 
+                                      int* numBlocks, unsigned char* current){
+      
+      unsigned char double_inDirectBlock[block_size_bytes];
+      read_sectors(baseSector + double_inDirectBlockId * 2, 2, double_inDirectBlock);
+      int doubleIndirectBlockIndex;
+      for(doubleIndirectBlockIndex = 0; doubleIndirectBlockIndex < block_size_bytes/4; doubleIndirectBlockIndex++){
+        unsigned int single_inDirectBlockId = *(unsigned int*)((void*)double_inDirectBlock + doubleIndirectBlockIndex * 4);
+        read_single_indirect_blocks(baseSector, single_inDirectBlockId, numBlocks, current);
+        if(*numBlocks == 0){
+          return;
+        }
+      }
+}
+
+/*
+    read tripple indirect block
+*/
+void read_tripple_indirect_blocks(unsigned int baseSector, unsigned int tripple_inDirectBlockId, 
+                                      int* numBlocks, unsigned char* current){
+      unsigned char tripple_inDirectBlock[block_size_bytes];
+      read_sectors(baseSector + tripple_inDirectBlockId * 2, 2, tripple_inDirectBlock);
+      int trippleIndirectBlockIndex;
+      for(trippleIndirectBlockIndex = 0; trippleIndirectBlockIndex < block_size_bytes/4; trippleIndirectBlockIndex++){
+        unsigned int double_inDirectBlockId = *(unsigned int*)((void*)tripple_inDirectBlock + trippleIndirectBlockIndex * 4);
+        read_double_indirect_blocks(baseSector, double_inDirectBlockId, numBlocks, current);
+        if(*numBlocks == 0){
+          return;
+        }
+      }
+}
+
+
+void fetch_all_blocks(unsigned int baseSector, unsigned int blocks[], 
+                                      int numBlocks, unsigned char* bigBuffer){
+      unsigned char* current = bigBuffer;
+      read_direct_blocks(baseSector, blocks, &numBlocks, current);
+      // here we go into the single indirect block
+      int blocksLeft = numBlocks - 12;
+      if(blocksLeft){
+        read_single_indirect_blocks(baseSector, blocks[12], &blocksLeft, current);
+      }
+      // here we go into the double indirect block  
+      if(blocksLeft){
+        read_double_indirect_blocks(baseSector, blocks[13], &blocksLeft, current);
+        }
+
+      // here we go into the tripple indirect block   -------- very rare
+      if(blocksLeft){
+        read_tripple_indirect_blocks(baseSector, blocks[14], &blocksLeft, current);
+      }
+    }
 
 /*
     auxilary fundction to print directories
@@ -375,7 +466,8 @@ void print_directory(struct ext2_inode* inode, unsigned int baseSector){
     
     int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
     printf("inode record size: %d\nnum blocks: %d", inode->i_size, numBlocks);
-    
+    unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
+
     unsigned int blockId = inode->i_block[0];
     unsigned char block[2*sector_size__bytes];
     read_sectors(baseSector + blockId*2, 2, block);
@@ -391,8 +483,6 @@ void print_directory(struct ext2_inode* inode, unsigned int baseSector){
     }
     printf("at the end, size is %d\n", size);
 }
-
-
 
 /*
     get inode number for the target file/dir
