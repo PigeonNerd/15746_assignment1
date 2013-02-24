@@ -372,21 +372,22 @@ void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseS
  */
 
 void print_directory(struct ext2_inode* inode, unsigned int baseSector){
-    int blockIndex = 0;
-    int size = 0;
+    
+    int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
+    printf("inode record size: %d\nnum blocks: %d", inode->i_size, numBlocks);
+    
     unsigned int blockId = inode->i_block[0];
     unsigned char block[2*sector_size__bytes];
     read_sectors(baseSector + blockId*2, 2, block);
-
-    struct ext2_dir_entry_2* entry = (struct ext2_dir_entry_2* )block;
-    printf("inode record size is %d\n", inode->i_size);
-    while(size < inode->i_size && entry->inode != 0){
+    struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)block ;
+    int size = 0;
+    while(size < inode->i_size && entry->rec_len != 0){
+        entry = (void*)block  + size;
+        size += entry->rec_len;
         char file_name[EXT2_NAME_LEN +1];
         memcpy(file_name, entry->name, entry->name_len);
         file_name[entry->name_len] = 0;
         printf("%10u %s, type:  %d, rec len: %d\n", entry->inode, file_name, entry->file_type, entry->rec_len);
-        entry = (void*)entry + entry->rec_len;
-        size += entry->rec_len;
     }
     printf("at the end, size is %d\n", size);
 }
@@ -409,6 +410,8 @@ int getInodeNumBasedOnPath(struct ext2_inode* inode, unsigned int baseSector, ch
     printf("inode record size is %d\n", inode->i_size);
  
      while(size < inode->i_size && entry->inode != 0){
+        entry = (void*)block + size;
+        size += entry->rec_len;
         char file_name[EXT2_NAME_LEN +1];
         memcpy(file_name, entry->name, entry->name_len);
         file_name[entry->name_len] = 0;
@@ -416,8 +419,6 @@ int getInodeNumBasedOnPath(struct ext2_inode* inode, unsigned int baseSector, ch
             printf("Found it ! %10u %s, type  %d\n", entry->inode, file_name, entry->file_type);
             return entry->inode;
         }
-        entry = (void*)entry + entry->rec_len;
-        size += entry->rec_len;
     }
      return -1;
 }
