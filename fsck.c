@@ -374,7 +374,11 @@ void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseS
 void print_directory(struct ext2_inode* inode, unsigned int baseSector){
     int blockIndex = 0;
     int size = 0;
-    struct ext2_dir_entry_2* entry = (struct ext2_dir_entry_2* )inode->i_block[0];
+    unsigned int blockId = inode->i_block[0];
+    unsigned char block[2*sector_size__bytes];
+    read_sectors(baseSector + blockId*2, 2, block);
+
+    struct ext2_dir_entry_2* entry = (struct ext2_dir_entry_2* )block;
     printf("inode record size is %d\n", inode->i_size);
     while(size < inode->i_size && entry->inode != 0){
         char file_name[EXT2_NAME_LEN +1];
