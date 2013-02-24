@@ -433,7 +433,7 @@ void read_tripple_indirect_blocks(unsigned int baseSector, unsigned int tripple_
 void fetch_all_blocks(unsigned int baseSector, unsigned int blocks[], 
                                       int numBlocks, unsigned char* bigBuffer){
       unsigned char* current = bigBuffer;
-      read_direct_blocks(baseSector, blocks, &numBlocks, current);
+      read_direct_blocks(baseSector, blocks, numBlocks, current);
       // here we go into the single indirect block
       int blocksLeft = numBlocks - 12;
       if(blocksLeft){
@@ -571,7 +571,17 @@ void part2Test(){
     //}
 }
 
-
+void smallTest(){
+    printf("------------start small test------------\n");
+    int buf[10];
+    int i;
+    for(i = 0; i < 10 ; i ++ ) {
+        buf[i] = i;
+    }
+    
+    printf("### %d\n",*(int*)(buf + 10));
+    
+}
 
 int
 main (int argc, char **argv)
@@ -597,8 +607,6 @@ main (int argc, char **argv)
 	 exit(-1);
 	}   
     part2Test();
-  
-    
     read_sectors(0, 1, MBR);
     print_partition(MBR, partitionToRead);
     close(device);
