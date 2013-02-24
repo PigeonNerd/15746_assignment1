@@ -78,13 +78,13 @@ read_sectors (int64_t block, unsigned int numsectors, void *into)
   int ret;
   int64_t lret;
 
-  // if (1) {
-  //     if (numsectors == 1) {
-  //       printf("Reading sector %"PRId64"\n", block);
-  //     } else {
-  //       printf("Reading sectors %"PRId64"--%"PRId64"\n", block, block + (numsectors-1));
-  //     }
-  //   }
+   //if (1) {
+   //    if (numsectors == 1) {
+   //      printf("Reading sector %"PRId64"\n", block);
+   //    } else {
+   //      printf("Reading sectors %"PRId64"--%"PRId64"\n", block, block + (numsectors-1));
+    //   }
+    // }
 
   if ((lret = lseek64(device, block * sector_size__bytes, SEEK_SET)) 
       != block * sector_size__bytes) {
@@ -362,7 +362,7 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
 /*
     read direct block
 */
-void read_direct_blocks(unsigned int baseSector, unsigned int blocks[], 
+void read_direct_blocks(unsigned int baseSector, unsigned int* blocks, 
                                       int numBlocks, unsigned char* current){
     int num_direct_blocks = minOfTwo(numBlocks, 12);
     int blockIndex;
@@ -436,16 +436,18 @@ void fetch_all_blocks(unsigned int baseSector, unsigned int blocks[],
       read_direct_blocks(baseSector, blocks, numBlocks, current);
       // here we go into the single indirect block
       int blocksLeft = numBlocks - 12;
-      if(blocksLeft){
+      
+      if(blocksLeft > 0){
+        printf("I am in\n");
         read_single_indirect_blocks(baseSector, blocks[12], &blocksLeft, current);
       }
       // here we go into the double indirect block  
-      if(blocksLeft){
+      if(blocksLeft > 0){
         read_double_indirect_blocks(baseSector, blocks[13], &blocksLeft, current);
         }
 
       // here we go into the tripple indirect block   -------- very rare
-      if(blocksLeft){
+      if(blocksLeft > 0){
         read_tripple_indirect_blocks(baseSector, blocks[14], &blocksLeft, current);
       }
     }
@@ -454,24 +456,30 @@ void fetch_all_blocks(unsigned int baseSector, unsigned int blocks[],
     auxilary fundction to print directories
  */
 
-void print_directory(struct ext2_inode* inode, unsigned int baseSector){
+void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* inode, unsigned int baseSector){
     
     int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
-    printf("inode record size: %d\nnum blocks: %d", inode->i_size, numBlocks);
+    printf("inode record size: %d\nnum blocks: %d\n", inode->i_size, numBlocks);
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
+    fetch_all_blocks(baseSector, inode->i_block, numBlocks, bigBufferOfBlocks);
 
-    unsigned int blockId = inode->i_block[0];
-    unsigned char block[2*sector_size__bytes];
-    read_sectors(baseSector + blockId*2, 2, block);
-    struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)block ;
+    struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
     int size = 0;
+    int count = 0;
     while(size < inode->i_size && entry->rec_len != 0){
-        entry = (void*)block  + size;
+        entry = (void*)bigBufferOfBlocks  + size;
         size += entry->rec_len;
+        count ++;
         char file_name[EXT2_NAME_LEN +1];
         memcpy(file_name, entry->name, entry->name_len);
         file_name[entry->name_len] = 0;
+        if( count > 2 && entry->file_type == EXT2_FT_DIR){
         printf("%10u %s, type:  %d, rec len: %d\n", entry->inode, file_name, entry->file_type, entry->rec_len);
+        struct ext2_inode thisInode;
+        read_inode(superBlock, baseSector, entry->inode, &thisInode);
+        print_directory(superBlock, &thisInode, baseSector);
+        
+        }
     }
     printf("at the end, size is %d\n", size);
 }
@@ -482,7 +490,7 @@ void print_directory(struct ext2_inode* inode, unsigned int baseSector){
 void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseSector){
     struct ext2_inode rootInode;
     read_inode(superBlock, baseSector, 2, &rootInode);
-    print_directory(&rootInode, baseSector);
+    print_directory(superBlock, &rootInode, baseSector);
 }
 
 /*
@@ -573,14 +581,8 @@ void part2Test(){
 
 void smallTest(){
     printf("------------start small test------------\n");
-    int buf[10];
-    int i;
-    for(i = 0; i < 10 ; i ++ ) {
-        buf[i] = i;
-    }
-    
-    printf("### %d\n",*(int*)(buf + 10));
-    
+    unsigned char tmp[block_size_bytes];
+    read_sectors(63 + 256 * 2, 2, tmp);
 }
 
 int
@@ -607,6 +609,7 @@ main (int argc, char **argv)
 	 exit(-1);
 	}   
     part2Test();
+    //smallTest();
     read_sectors(0, 1, MBR);
     print_partition(MBR, partitionToRead);
     close(device);
