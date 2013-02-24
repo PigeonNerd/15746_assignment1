@@ -342,12 +342,12 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
     printf("Test block %d...................\n", blockId);
     unsigned int blocksPerGroup = superBlock->s_blocks_per_group;
     int groupIndex = blockId/blocksPerGroup;
-	struct ext2_group_desc thisDesc;
+	  struct ext2_group_desc thisDesc;
     read_blockDesc(baseSector, groupIndex, &thisDesc);
     unsigned int bitMapBlockId = thisDesc.bg_block_bitmap;
     // TODO: this needs rethinking
     int offset = blockId - bitMapBlockId - 216; 
-	printf("OFFSET IS %d\n", offset);
+	  printf("OFFSET IS %d\n", offset);
     unsigned char bitMap[block_size_bytes];
     read_block_bitMap(baseSector, &thisDesc, bitMap);
     int byteOffset = offset/8;
@@ -361,13 +361,33 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
  *  print out all of the directory of this file system
  */
 
-void printAllDirectory(struct ext2_super_block * superBlock, unsigned int baseSector){
+void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseSector){
+    struct ext2_inode rootInode;
+    read_inode(superBlock, baseSector, 2, &rootInode);
+    print_directory(&rootInode, baseSector);
+}
+
+/*
+    auxilary fundction to print directories
+ */
+
+void print_directory(struct ext2_inode* inode, unsigned int baseSector){
     int blockIndex = 0;
     int size = 0;
-    unsigned char block[2*sector_size__bytes];
-    struct ext2_dir_entry_2* entry =     
-
+    struct ext2_dir_entry_2* entry = (struct ext2_dir_entry_2* )inode->i_block[0];
+    printf("inode record size is %d\n", inode->i_size);
+    while(size < inode->i_size && entry->inode != 0){
+        char file_name[EXT2_NAME_LEN +1];
+        memcpy(file_name, entry->name, entry->name_len);
+        file_name[entry->name_len] = 0;
+        printf("%10u %s, type:  %d, rec len: %d\n", entry->inode, file_name, entry->file_type, entry->rec_len);
+        entry = (void*)entry + entry->rec_len;
+        size += entry->rec_len;
+    }
+    printf("at the end, size is %d\n", size);
 }
+
+
 
 /*
     get inode number for the target file/dir
@@ -426,23 +446,28 @@ void part2Test(){
     struct ext2_super_block superBlock;
     read_superBlock(baseSector, &superBlock);
     print_superBlock(&superBlock);
-    struct ext2_inode rootInode;
-    read_inode(&superBlock, baseSector, 2, &rootInode);
-    if(S_ISDIR(rootInode.i_mode)){
-      printf("This is dir\n");
-    }else{
-      printf("This is junk\n");
-    }
-    int yes =  isInodeInBitMap(&superBlock, 2, baseSector);
-    if(yes){
-      printf("root inode is set\n");
-    }
-    struct ext2_inode targetInode;
-    char path[] = "/oz/tornado/glinda";  
-    findInodeBasedOnPath(&superBlock, baseSector, path, &targetInode);
-    unsigned int blockId = targetInode.i_block[0];
+
+    print_all_directory(superBlock, baseSector);
+
+
+
+    // struct ext2_inode rootInode;
+    // read_inode(&superBlock, baseSector, 2, &rootInode);
+    // if(S_ISDIR(rootInode.i_mode)){
+    //   printf("This is dir\n");
+    // }else{
+    //   printf("This is junk\n");
+    // }
+    // int yes =  isInodeInBitMap(&superBlock, 2, baseSector);
+    // if(yes){
+    //   printf("root inode is set\n");
+    // }
+    // struct ext2_inode targetInode;
+    // char path[] = "/oz/tornado/glinda";  
+    // findInodeBasedOnPath(&superBlock, baseSector, path, &targetInode);
+    // unsigned int blockId = targetInode.i_block[0];
     
-    printf("%s\n", (char*)targetInode.i_block);
+    // printf("%s\n", (char*)targetInode.i_block);
    
     //yes = isBlockInBitMap(&superBlock, blockId, baseSector);
     //if(yes){
