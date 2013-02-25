@@ -483,6 +483,97 @@ void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* ino
     }
     printf("at the end, size is %d\n", size);
 }
+/*
+ *  find the parent of a directory inode
+ */
+int findParent(struct ext2_inode* inode, int inodeNum, unsigned baseSector){
+    int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
+    unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
+    fetch_all_blocks(baseSector, inode->i_block, numBlocks, bigBufferOfBlocks);
+    struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
+    int size = 0;
+    int count = 0;
+    while(size < inode->i_size && entry->rec_len != 0){
+        entry = (void*)bigBufferOfBlocks  + size;
+        size += entry->rec_len;
+        
+
+
+
+        }
+    }
+}
+
+
+/*
+ *  check the first directory entry
+ */
+
+void check_first_entry(struct ext2_dir_entry_2* entry, int inodeNum, unsigned int baseSector){
+    char file_name[EXT2_NAME_LEN +1];
+    memcpy(file_name, entry->name, entry->name_len);
+    file_name[entry->name_len] = 0;
+    int needToWrite = 0;
+    if(strcmp(file_name, ".") != 0){
+        // make it .
+    }
+    if(entry->inode != inodeNum){
+        // make it the right inode number
+    }
+    
+    if(needToWrite){
+        // write back to sectors
+    }
+}
+
+/*
+ *  check the second directory entry
+ */
+void check_second_entry(struct ext2_dir_entry_2* entry, int inodeNum, unsigned int baseSector){
+    char file_name[EXT2_NAME_LEN +1];
+    memcpy(file_name, entry->name, entry->name_len);
+    file_name[entry->name_len] = 0;
+    int needToWrite = 0;
+    if(strcmp(file_name, "..") != 0){
+        // make it .
+    }
+    if(inodeNum == 2){
+        if(entry->inode != 2){
+            // make it the right number
+        }
+    }else{
+        
+        
+    }
+
+}
+
+
+
+/*
+ *  check the consistency of the directory
+ *  fix the error if needed
+ */
+void checkDirectory(struct ext2_super_block* superBlock, int inodeNum, unsigned int baseSector){
+    
+    struct ext2_inode inode;
+    read_inode(superBlock, baseSector, inodeNum, &inode);
+
+    int numBlocks = inode.i_size/block_size_bytes + inode.i_size%block_size_bytes; 
+    printf("inode record size: %d\nnum blocks: %d\n", inode.i_size, numBlocks);
+    unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
+    fetch_all_blocks(baseSector, inode.i_block, numBlocks, bigBufferOfBlocks);
+
+    // this is the first entry 
+    struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
+   
+
+
+
+
+
+
+}
 
 /*
  *  print out all of the directory of this file system
@@ -551,7 +642,7 @@ void part2Test(){
     read_superBlock(baseSector, &superBlock);
     print_superBlock(&superBlock);
 
-    print_all_directory(&superBlock, baseSector);
+    //print_all_directory(&superBlock, baseSector);
 
 
 
