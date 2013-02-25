@@ -485,24 +485,60 @@ void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* ino
 }
 /*
  *  find the parent of a directory inode
+ *  initially, parentNum should be -1
  */
-int findParent(struct ext2_inode* inode, int inodeNum, unsigned baseSector){
+void findParent(int inodeNum_current, int inodeNum_target, unsigned baseSector, int* parentNum){
+    struct ext2_super_block superBlock;
+    read_superBlock(baseSector, &superBlock);
+    struct ext2_inode inode;
+    read_inode(superBlock, baseSector, inodeNum_current, &inode);
     int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
     fetch_all_blocks(baseSector, inode->i_block, numBlocks, bigBufferOfBlocks);
     struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
     int size = 0;
     int count = 0;
-    while(size < inode->i_size && entry->rec_len != 0){
+    while(*parentNum < 0 && size < inode->i_size && entry->rec_len != 0){
         entry = (void*)bigBufferOfBlocks  + size;
         size += entry->rec_len;
-        
-
-
-
+        count ++;
+        if(entry->inode == inodeNum_target){
+            *parentNum = entry->inode;
+        }else{
+            if(count > 2 && entry->file_type == EXT2_FT_DIR){
+              findParent(entry->inode, inodeNum_target, baseSector, parentNum);
+            }
+          }
         }
     }
 }
+
+/*
+ *  check if it is its parent
+ */
+
+ int isParent(int inodeNum_current, int inodeNum_target, unsigned baseSector){
+    struct ext2_super_block superBlock;
+    read_superBlock(baseSector, &superBlock);
+    struct ext2_inode inode;
+    read_inode(superBlock, baseSector, inodeNum_current, &inode);
+    int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
+    unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
+    fetch_all_blocks(baseSector, inode->i_block, numBlocks, bigBufferOfBlocks);
+    struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
+    int size = 0;
+    int count = 0;
+    while(*parentNum < 0 && size < inode->i_size && entry->rec_len != 0){
+        entry = (void*)bigBufferOfBlocks  + size;
+        size += entry->rec_len;
+        count ++;
+        if(entry->inode == inodeNum_target){
+              return 1;
+          }
+        }
+    }
+    return 0;
+ }
 
 
 /*
@@ -542,8 +578,13 @@ void check_second_entry(struct ext2_dir_entry_2* entry, int inodeNum, unsigned i
             // make it the right number
         }
     }else{
+        int* parentNum = -1;
+        findParent(2, inodeNum, baseSector, parentNum);
         
-        
+    }
+
+    if(needToWrite){
+        // write back to sectors
     }
 
 }
