@@ -478,7 +478,8 @@ void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* ino
         struct ext2_inode thisInode;
         read_inode(superBlock, baseSector, entry->inode, &thisInode);
         print_directory(superBlock, &thisInode, baseSector);
-        
+        }else if(entry->file_type == EXT2_FT_DIR){
+        printf("%10u %s, type:  %d, rec len: %d\n", entry->inode, file_name, entry->file_type, entry->rec_len);
         }
     }
     printf("at the end, size is %d\n", size);
@@ -552,9 +553,13 @@ void check_first_entry(struct ext2_dir_entry_2* entry, int inodeNum, unsigned in
     int needToWrite = 0;
     if(strcmp(file_name, ".") != 0){
         // make it .
+        strcpy(entry->name, ".");
+        entry->name_len = 2;
+        //might need to adjust the size of the last entry(padding)
     }
     if(entry->inode != inodeNum){
         // make it the right inode number
+      entry->inode = inodeNum;
     }
     
     if(needToWrite){
@@ -566,30 +571,30 @@ void check_first_entry(struct ext2_dir_entry_2* entry, int inodeNum, unsigned in
  *  check the second directory entry
  */
 void check_second_entry(struct ext2_dir_entry_2* entry, int inodeNum, unsigned int baseSector){
-    char file_name[EXT2_NAME_LEN +1];
-    memcpy(file_name, entry->name, entry->name_len);
-    file_name[entry->name_len] = 0;
-    int needToWrite = 0;
-    if(strcmp(file_name, "..") != 0){
-        // make it .
+  char file_name[EXT2_NAME_LEN +1];
+  memcpy(file_name, entry->name, entry->name_len);
+  file_name[entry->name_len] = 0;
+  int needToWrite = 0;
+  if(strcmp(file_name, "..") != 0){
+    // make it .
+  }
+  if(inodeNum == 2){
+    if(entry->inode != 2){
+    // make it the right number
     }
-    if(inodeNum == 2){
-        if(entry->inode != 2){
-            // make it the right number
-        }
-    }else{
-        int* parentNum = -1;
-        findParent(2, inodeNum, baseSector, parentNum);
-        
-    }
+  }else{
+    if ( !isParent(entry->inode, inodeNum, baseSector) ){
+      int* parentNum = -1;
+      findParent(2, inodeNum, baseSector, parentNum);
+      // use *parentNum 
 
-    if(needToWrite){
-        // write back to sectors
     }
+  }
+  if(needToWrite){
+    // write back to sectors
+  }
 
 }
-
-
 
 /*
  *  check the consistency of the directory
@@ -687,9 +692,10 @@ void part2Test(){
 
 
 
-    // struct ext2_inode rootInode;
-    // read_inode(&superBlock, baseSector, 2, &rootInode);
-    // if(S_ISDIR(rootInode.i_mode)){
+     struct ext2_inode rootInode;
+     read_inode(&superBlock, baseSector, 2, &rootInode);
+     print_directory(&superBlock, &rootInode, baseSector);
+    //if(S_ISDIR(rootInode.i_mode)){
     //   printf("This is dir\n");
     // }else{
     //   printf("This is junk\n");
