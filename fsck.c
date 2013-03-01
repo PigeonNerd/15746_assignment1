@@ -460,7 +460,10 @@ void fetch_all_blocks(unsigned int baseSector, unsigned int blocks[],
 
 void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* inode, unsigned int baseSector){
     
-    int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
+    int numBlocks = inode->i_size/block_size_bytes;
+    if(inode->i_size%block_size_bytes){
+      numBlocks ++;
+    }
     printf("inode record size: %d\nnum blocks: %d\n", inode->i_size, numBlocks);
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
     fetch_all_blocks(baseSector, inode->i_block, numBlocks, bigBufferOfBlocks);
@@ -495,7 +498,11 @@ void findParent(int inodeNum_current, int inodeNum_target, unsigned baseSector, 
     read_superBlock(baseSector, &superBlock);
     struct ext2_inode inode;
     read_inode(&superBlock, baseSector, inodeNum_current, &inode);
-    int numBlocks = inode.i_size/block_size_bytes + inode.i_size%block_size_bytes; 
+    int numBlocks = inode.i_size/block_size_bytes; 
+    if(inode.i_size%block_size_bytes){
+      numBlocks ++;
+    }
+
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
     fetch_all_blocks(baseSector, inode.i_block, numBlocks, bigBufferOfBlocks);
     struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
@@ -524,7 +531,10 @@ void findParent(int inodeNum_current, int inodeNum_target, unsigned baseSector, 
     read_superBlock(baseSector, &superBlock);
     struct ext2_inode inode;
     read_inode(&superBlock, baseSector, inodeNum_current, &inode);
-    int numBlocks = inode.i_size/block_size_bytes + inode.i_size%block_size_bytes; 
+    int numBlocks = inode.i_size/block_size_bytes;
+    if(inode.i_size%block_size_bytes){
+      numBlocks ++;
+    }
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
     fetch_all_blocks(baseSector, inode.i_block, numBlocks, bigBufferOfBlocks);
     struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
@@ -617,7 +627,10 @@ void checkDirectory(struct ext2_super_block* superBlock, int inodeNum, unsigned 
     struct ext2_inode inode;
     read_inode(superBlock, baseSector, inodeNum, &inode);
 
-    int numBlocks = inode.i_size/block_size_bytes + inode.i_size%block_size_bytes; 
+    int numBlocks = inode.i_size/block_size_bytes;
+    if(inode.i_size%block_size_bytes){
+      numBlocks++;
+    }
     //printf("inode record size: %d\nnum blocks: %d\n", inode.i_size, numBlocks);
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
     fetch_all_blocks(baseSector, inode.i_block, numBlocks, bigBufferOfBlocks);
@@ -660,7 +673,10 @@ void find_link_count(struct ext2_super_block* superBlock, int inodeNum,
         int inodeNum_target, unsigned int baseSector, int*count, int flag){
     struct ext2_inode inode;
     read_inode(superBlock, baseSector, inodeNum, &inode);
-    int numBlocks = inode.i_size/block_size_bytes + inode.i_size%block_size_bytes; 
+    int numBlocks = inode.i_size/block_size_bytes;
+    if(inode.i_size%block_size_bytes){
+      numBlocks++;
+    }
     //printf("inode record size: %d\nnum blocks: %d\n", inode.i_size, numBlocks);
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
     fetch_all_blocks(baseSector, inode.i_block, numBlocks, bigBufferOfBlocks);
@@ -690,7 +706,11 @@ void find_link_count(struct ext2_super_block* superBlock, int inodeNum,
  */
 int getInodeNumBasedOnPath(struct ext2_inode* inode, unsigned int baseSector, char* path){
 
-    int numBlocks = inode->i_size/block_size_bytes + inode->i_size%block_size_bytes; 
+    int numBlocks = inode->i_size/block_size_bytes;
+
+    if(inode->i_size%block_size_bytes){
+      numBlocks++;
+    } 
     //printf("inode record size: %d\nnum blocks: %d\n", inode.i_size, numBlocks);
     unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
     fetch_all_blocks(baseSector, inode->i_block, numBlocks, bigBufferOfBlocks);
