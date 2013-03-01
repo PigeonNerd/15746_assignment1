@@ -762,8 +762,24 @@ void check_all_directory(struct ext2_super_block* superBlock, unsigned baseSecto
 }
 
 /*
- *    add inode 
+ *    add inode as lost file into lost and found dir 
  */
+
+void addInodeAsFileToDir(struct ext2_super_block* superBlock, unsigned baseSector, struct ext2_inode* inode_dir,
+        int inodeNum){
+        int size = inode_dir->i_size;
+        // here we temporarily assume the number of blocks is not more than 12
+        int blockIndex = size/block_size_bytes;
+        int blockOffset = size%block_size_bytes;
+        unsigned int blockId = inode_dir->i_block[blockIndex];
+        unsigned char block[block_size_bytes];
+        read_sectors(baseSector + blockId * 2, 2, block);
+        struct ext2_dir_entry_2 entry;
+        entry.file_type = EXT2_FT_REG_FILE;
+        sprintf(entry->file_name, "%d", inodeNum);
+        entry.name_len = strlen(entry->file_name);
+        entry.rec_len = 8 + strlen(entry->file_name)/4
+}
 
 
 /*
