@@ -4,7 +4,7 @@ CFLAGS		= -g -Wall -DDEBUG
 LDFLAGS		= -lm
 OBJS		= readwrite.o
 BINS        = myfsck
-K = 5
+K = 3
 
 # Explit build and testing targets
 
@@ -12,6 +12,11 @@ all: ${BINS}
 
 run: myfsck
 	./myfsck -p ${K} -i disk
+	rm -f *.o $(BINS)
+fix: myfsck
+	rm disk
+	cp disk_original disk
+	./myfsck -f ${K} -i disk
 	rm -f *.o $(BINS)
 myfsck: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
