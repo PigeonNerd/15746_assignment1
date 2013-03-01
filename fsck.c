@@ -338,6 +338,7 @@ int isInodeInBitMap(struct ext2_super_block* superBlock, int inodeNum, unsigned 
     unsigned char thisByte = bitMap[byteOffset];
     return thisByte && (1<<bitOffset);
 }
+
 /*
  *  test if blocks are set in block bitmap
  */
@@ -471,7 +472,7 @@ void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* ino
     struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
     int size = 0;
     int count = 0;
-    while(size < inode->i_size && entry->rec_len != 0){
+    while(size < inode->i_size && entry->inode != 0){
         entry = (void*)bigBufferOfBlocks  + size;
         size += entry->rec_len;
         count ++;
@@ -489,6 +490,7 @@ void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* ino
     }
     printf("at the end, size is %d\n", size);
 }
+
 /*
  *  find the parent of a directory inode
  *  initially, parentNum should be -1
@@ -508,7 +510,7 @@ void findParent(int inodeNum_current, int inodeNum_target, unsigned baseSector, 
     struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
     int size = 0;
     int count = 0;
-    while(*parentNum < 0 && size < inode.i_size && entry->rec_len != 0){
+    while(*parentNum < 0 && size < inode.i_size && entry->inode != 0){
         entry = (void*)bigBufferOfBlocks  + size;
         size += entry->rec_len;
         count ++;
@@ -525,7 +527,6 @@ void findParent(int inodeNum_current, int inodeNum_target, unsigned baseSector, 
 /*
  *  check if inodeNum current is inodeNum_target's parent
  */
-
  int isParent(int inodeNum_current, int inodeNum_target, unsigned baseSector){
     struct ext2_super_block superBlock;
     read_superBlock(baseSector, &superBlock);
@@ -540,7 +541,7 @@ void findParent(int inodeNum_current, int inodeNum_target, unsigned baseSector, 
     struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
     int size = 0;
     int count = 0;
-    while(size < inode.i_size && entry->rec_len != 0){
+    while(size < inode.i_size && entry->inode != 0){
         entry = (void*)bigBufferOfBlocks  + size;
         size += entry->rec_len;
         count ++;
@@ -555,7 +556,6 @@ void findParent(int inodeNum_current, int inodeNum_target, unsigned baseSector, 
 /*
  *  check the first directory entry
  */
-
 int check_first_entry(struct ext2_super_block* superBlock, 
             struct ext2_dir_entry_2* entry, int inodeNum, unsigned int baseSector){
     char file_name[EXT2_NAME_LEN +1];
@@ -647,7 +647,7 @@ void checkDirectory(struct ext2_super_block* superBlock, int inodeNum, unsigned 
         write_sectors(sectorNum, 2, bigBufferOfBlocks);
     }
     entry = (void*)entry2 + entry2->rec_len;
-    while(size < inode.i_size && entry->rec_len != 0){
+    while(size < inode.i_size && entry->inode != 0){
         entry = (void*)bigBufferOfBlocks + size;
         size += entry->rec_len;
        if (entry->file_type == EXT2_FT_DIR){
@@ -684,7 +684,7 @@ void find_link_count(struct ext2_super_block* superBlock, int inodeNum,
     struct ext2_dir_entry_2* entry  = (struct ext2_dir_entry_2*)bigBufferOfBlocks;
     int size = 0;
     int n = 0;
-    while(size < inode.i_size && entry->rec_len != 0){
+    while(size < inode.i_size && entry->inode != 0){
         entry = (void*)bigBufferOfBlocks + size;
         size += entry->rec_len;
         n ++;
