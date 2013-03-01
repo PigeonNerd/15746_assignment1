@@ -776,9 +776,9 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock, unsigned baseSecto
         read_sectors(baseSector + blockId * 2, 2, block);
         struct ext2_dir_entry_2 entry;
         entry.file_type = EXT2_FT_REG_FILE;
-        sprintf(entry->file_name, "%d", inodeNum);
-        entry.name_len = strlen(entry->file_name);
-        entry.rec_len = 8 + strlen(entry->file_name)/4
+        sprintf(entry.name, "%d", inodeNum);
+        entry.name_len = strlen(entry.name);
+        entry.rec_len = 8 + strlen(entry.name)/4;
 }
 
 
