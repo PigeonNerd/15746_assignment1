@@ -673,7 +673,7 @@ void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseS
  *  return immediately
  */
 void find_link_count(struct ext2_super_block* superBlock, int inodeNum, 
-        int inodeNum_target, unsigned int baseSector, int*count, int flag){
+        int inodeNum_target, unsigned int baseSector, int*count){
     //printf("In inode %d find link count for %d\n", inodeNum, inodeNum_target);
     struct ext2_inode inode;
     read_inode(superBlock, baseSector, inodeNum, &inode);
@@ -694,12 +694,9 @@ void find_link_count(struct ext2_super_block* superBlock, int inodeNum,
         n ++;
         if( entry->inode == inodeNum_target){
            (*count)++;
-            if(flag == CHECK_REFERENCED){
-                return;
-            }
         }
        if ( n > 2 && entry->file_type == EXT2_FT_DIR){
-            find_link_count(superBlock, entry->inode, inodeNum_target, baseSector, count, flag);
+            find_link_count(superBlock, entry->inode, inodeNum_target, baseSector, count);
        }
     }
 }
@@ -770,7 +767,7 @@ void check_all_directory(struct ext2_super_block* superBlock, unsigned baseSecto
  */
 
 void addInodeAsFileToDir(struct ext2_super_block* superBlock, 
-    unsigned int baseSector, struct ext2_inode* inode_dir, int inodeNum, int file_type){
+    unsigned int baseSector, struct ext2_inode* inode_dir, int inodeNum){
     // here we temporarily assume the number of blocks is not more than 12
     int numBlocks = inode_dir->i_size/block_size_bytes;
     if(inode_dir->i_size%block_size_bytes){
@@ -781,6 +778,10 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock,
     int size = 0;
     struct ext2_dir_entry_2* prev;
     struct ext2_dir_entry_2*  entry = (struct ext2_dir_entry_2 *)bigBufferOfBlocks;
+    
+    // the first entry point to itself
+    int thisInodeNum = entry->inode;
+
     while( size < inode_dir->i_size){
         entry = (void*)bigBufferOfBlocks + size;
         if(entry->inode == 0){
@@ -792,12 +793,20 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock,
             entry->name_len = strlen(entry->name);
             entry->rec_len  = block_size_bytes - size;
             prev->rec_len = EXT2_DIR_REC_LEN(prev->name_len);
-            // need to write back to the disk
+            // need to write block back to the disk
             int blockIndex = size/block_size_bytes;
             unsigned int blockId = inode_dir->i_block[blockIndex];
             printf("block id %d, sector at %d\n", blockId, baseSector + blockId * 2);
             write_sectors(baseSector + blockId * 2, 2, bigBufferOfBlocks);
-            //print_directory(superBlock, inode_dir, baseSector);  
+            
+           // need to write the inode back to the disk 
+            inode_dir->i_links_count += 1;
+            int secNum = inodeToSector(superBlock, baseSector, thisInodeNum);
+            unsigned char inodeSector[sector_size__bytes];
+            read_sectors(secNum, 1, inodeSector); 
+            int secOffset = (thisInodeNum - 1) % 4;
+            memcpy(inodeSector + secOffset*sizeof(struct ext2_inode), inode_dir, sizeof(struct ext2_inode));
+            write_sectors(secNum, 1, inodeSector);
             break;
         }
         size += EXT2_DIR_REC_LEN(entry->name_len);
@@ -809,31 +818,36 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock,
 /*
  *  check unreferenced inode
  */
-void check_unreferenced_inode(struct ext2_super_block* superBlock, unsigned baseSector){
-    printf("-------------Start PASS TWO checking unreferenced inode---------------\n");
+void check_reference_count(struct ext2_super_block* superBlock, unsigned baseSector){
+    printf("-------------Start PASS TWO and THREE checking reference count---------------\n");
     int totalNumInodes = superBlock->s_inodes_count;
     int inodeNum;
-    for(inodeNum = 7; inodeNum <= totalNumInodes; inodeNum++){
+    for(inodeNum = 2; inodeNum <= totalNumInodes; inodeNum++){
             int count = 0;
             struct ext2_inode testInode;
             read_inode(superBlock, baseSector, inodeNum,&testInode);
             int storedLinkCount = testInode.i_links_count;
-            find_link_count(superBlock, 2, inodeNum,  baseSector, &count, CHECK_REFERENCED);
+            find_link_count(superBlock, 2, inodeNum,  baseSector, &count);
             if( count == 0 && storedLinkCount != 0){
                 printf("NOTE: inode %d is not referenced by anyone\n", inodeNum);
                 char lostFound[] = "/lost+found"; 
                 struct ext2_inode thisInode;
                 findInodeBasedOnPath(superBlock, baseSector, lostFound, &thisInode);
-                int file_type = 1;
-                if(testInode.i_mode == EXT2_S_IFDIR){
-                    file_type = 2;
-                }
-                addInodeAsFileToDir(superBlock, baseSector, &thisInode, inodeNum, file_type);
-                print_directory(superBlock, &thisInode, baseSector);
-                //break;
+                addInodeAsFileToDir(superBlock, baseSector, &thisInode, inodeNum);
+                //print_directory(superBlock, &thisInode, baseSector);
+            }else if( count != 0 && storedLinkCount != count){
+                printf("NOTE: inode %d stored link count: %d, the actual link count: %d\n", 
+                                                            inodeNum, storedLinkCount, count);
+                testInode.i_links_count = count;
+                int secNum = inodeToSector(superBlock, baseSector, inodeNum);
+                unsigned char inodeSector[sector_size__bytes];
+                read_sectors(secNum, 1, inodeSector); 
+                int secOffset = (inodeNum - 1) % 4;
+                memcpy(inodeSector + secOffset*sizeof(struct ext2_inode), &testInode, sizeof(struct ext2_inode));
+                write_sectors(secNum, 1, inodeSector);
             }
     }
-    printf("-------------End PASS TWO-------------\n");
+    printf("-------------End PASS TWO and THREE-------------\n");
 }
 
 void part2Test(){
@@ -927,7 +941,7 @@ main (int argc, char **argv)
         struct ext2_super_block superBlock;
         read_superBlock(baseSector, &superBlock);
         check_all_directory(&superBlock ,baseSector);
-        check_unreferenced_inode(&superBlock, baseSector);
+        check_reference_count(&superBlock, baseSector);
         check_all_directory(&superBlock ,baseSector);
     }
 
