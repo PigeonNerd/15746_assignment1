@@ -493,9 +493,8 @@ void check_direct_blocks(struct ext2_super_block* superBlock,
  */
 void check_singly_indirect_blocks(struct ext2_super_block* superBlock, 
   unsigned int baseSector,unsigned int single_inDirectBlockId, 
-                                      int* numBlocks, int* allocateCount, unsigned char* allBitMaps){
+                                      int* numBlocks, unsigned char* allBitMaps){
     setBlockBitMap(superBlock, baseSector, single_inDirectBlockId, allBitMaps);
-    (*allocateCount) ++;
     unsigned char single_inDirectBlock[block_size_bytes];
     read_sectors(baseSector + single_inDirectBlockId*2, 2, single_inDirectBlock);
     int indirectBlockIndex;
@@ -514,15 +513,14 @@ void check_singly_indirect_blocks(struct ext2_super_block* superBlock,
  */
 void check_doublely_indirect_blocks(struct ext2_super_block* superBlock, 
   unsigned int baseSector,unsigned int double_inDirectBlockId, 
-                                      int* numBlocks, int* allocateCount, unsigned char* allBitMaps){
+                                      int* numBlocks, unsigned char* allBitMaps){
     setBlockBitMap(superBlock, baseSector, double_inDirectBlockId, allBitMaps);
-    (*allocateCount) ++;
     unsigned char double_inDirectBlock[block_size_bytes];
     read_sectors(baseSector + double_inDirectBlockId * 2, 2, double_inDirectBlock);
     int doubleIndirectBlockIndex;
     for(doubleIndirectBlockIndex = 0; doubleIndirectBlockIndex < block_size_bytes/4; doubleIndirectBlockIndex++){
       unsigned int single_inDirectBlockId = *(unsigned int*)((void*)double_inDirectBlock + doubleIndirectBlockIndex * 4);  
-      check_singly_indirect_blocks(superBlock, baseSector, single_inDirectBlockId, numBlocks, allocateCount, allBitMaps);
+      check_singly_indirect_blocks(superBlock, baseSector, single_inDirectBlockId, numBlocks, allBitMaps);
       if(*numBlocks == 0){
         return;
       }
@@ -534,15 +532,14 @@ void check_doublely_indirect_blocks(struct ext2_super_block* superBlock,
  */
 void check_tripple_indirect_blocks(struct ext2_super_block* superBlock, 
   unsigned int baseSector,unsigned int tripple_inDirectBlockId, 
-                                      int* numBlocks, int* allocateCount, unsigned char* allBitMaps){
+                                      int* numBlocks, unsigned char* allBitMaps){
       setBlockBitMap(superBlock, baseSector, tripple_inDirectBlockId, allBitMaps);
-      (*allocateCount) ++;
       unsigned char tripple_inDirectBlock[block_size_bytes];
       read_sectors(baseSector + tripple_inDirectBlockId * 2, 2, tripple_inDirectBlock);
       int trippleIndirectBlockIndex;
       for(trippleIndirectBlockIndex = 0; trippleIndirectBlockIndex < block_size_bytes/4; trippleIndirectBlockIndex++){
         unsigned int double_inDirectBlockId = *(unsigned int*)((void*)tripple_inDirectBlock + trippleIndirectBlockIndex * 4);
-        check_doublely_indirect_blocks(superBlock, baseSector, double_inDirectBlockId, numBlocks, allocateCount, allBitMaps);
+        check_doublely_indirect_blocks(superBlock, baseSector, double_inDirectBlockId, numBlocks, allBitMaps);
         if(*numBlocks == 0){
           return;
         }
@@ -556,10 +553,9 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
                 int inodeNum, unsigned char* allBitMaps, int* allocateCount){
       struct ext2_inode inode;
       read_inode(superBlock, baseSector, inodeNum, &inode);
-      int numBlocks = inode.i_size/block_size_bytes;
-      if(inode.i_size % block_size_bytes){
-          numBlocks++;
-      }
+
+      int numBlocks = inode.i_blocks/(2<<superBlock->s_log_block_size);
+      
       printf("Start to file inode %d with %d blocks\n", inodeNum, numBlocks);
       *allocateCount += numBlocks;
       int blocksLeft = numBlocks;
@@ -573,15 +569,15 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
       }
       // here we check the singly indirect blocks
       if(blocksLeft > 0){
-          check_singly_indirect_blocks(superBlock, baseSector, inode.i_block[12], &blocksLeft, allocateCount, allBitMaps);
+          check_singly_indirect_blocks(superBlock, baseSector, inode.i_block[12], &blocksLeft, allBitMaps);
       }
       // here we check the doubely indirect blocks
       if(blocksLeft > 0){
-          check_doublely_indirect_blocks(superBlock, baseSector, inode.i_block[13], &blocksLeft, allocateCount, allBitMaps);
+          check_doublely_indirect_blocks(superBlock, baseSector, inode.i_block[13], &blocksLeft, allBitMaps);
       }
       // here we check the tripple indirect blocks
       if(blocksLeft > 0){
-          check_tripple_indirect_blocks(superBlock, baseSector, inode.i_block[14], &blocksLeft, allocateCount, allBitMaps);
+          check_tripple_indirect_blocks(superBlock, baseSector, inode.i_block[14], &blocksLeft, allBitMaps);
       }
  }
 
