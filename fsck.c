@@ -362,9 +362,29 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
     int bitOffset = offset%8;
     //printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
     unsigned char thisByte = bitMap[byteOffset];
-    return thisByte && (1<<bitOffset);
+    int bit = thisByte & (1<< (bitOffset));
+    return bit != 0;
 }
 
+/*
+ *  set block bit map
+ */
+void setBlockBitMap(struct ext2_super_block* superBlock,
+ unsigned int baseSector, unsigned int blockId, unsigned char* allBitMaps){
+    unsigned int startPoint[3]= {0, 1024, 2048};
+    unsigned int blocksPerGroup = superBlock->s_blocks_per_group;
+    int groupIndex = blockId/blocksPerGroup;
+    struct ext2_group_desc thisDesc;
+    read_blockDesc(baseSector, groupIndex, &thisDesc);
+    unsigned int bitMapBlockId = thisDesc.bg_block_bitmap;
+    // need rethink about this
+    int offset = blockId - bitMapBlockId - 216;
+    unsigned char* bitMap = allBitMaps[startPoint[groupIndex]];
+    int byteOffset = offset/8;
+    int bitOffset = offset%8;
+    //printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
+    bitMap[byteOffset] |= (1<< (bitOffset));
+}
 
 /*
     read direct block
@@ -458,6 +478,118 @@ void fetch_all_blocks(unsigned int baseSector, unsigned int blocks[],
       }
     }
 
+
+/*
+ *  check direct blocks
+ */
+void check_direct_blocks(struct ext2_super_block* superBlock, 
+  unsigned int baseSector, unsigned int directBlockId, unsigned char* allBitMaps){
+
+    setBlockBitMap(superBlock, baseSector, directBlockId, allBitMaps);
+}
+
+/*
+ *  check singly indirect blocks
+ */
+void check_singly_indirect_blocks(struct ext2_super_block* superBlock, 
+  unsigned int baseSector,unsigned int single_inDirectBlockId, 
+                                      int* numBlocks, unsigned char* allBitMaps){
+    setBlockBitMap(superBlock, baseSector, single_inDirectBlockId, allBitMaps);
+    unsigned char single_inDirectBlock[block_size_bytes];
+    read_sectors(baseSector + single_inDirectBlockId*2, 2, single_inDirectBlock);
+    int indirectBlockIndex;
+    for(indirectBlockIndex = 0; indirectBlockIndex < block_size_bytes/4; indirectBlockIndex++){
+        unsigned int directBlockId = *(unsigned int *)((void*)single_inDirectBlock + indirectBlockIndex * 4);
+        check_direct_blocks(superBlock, baseSector, directBlockId, allBitMaps);
+        (*numBlocks)--;
+        if(*numBlocks == 0){
+          return;
+        }
+      }
+}
+
+/*
+ *  check doubly indirect blocks
+ */
+void check_doublely_indirect_blocks(struct ext2_super_block* superBlock, 
+  unsigned int baseSector,unsigned int double_inDirectBlockId, 
+                                      int* numBlocks, unsigned char* allBitMaps){
+    setBlockBitMap(superBlock, baseSector, double_inDirectBlockId, allBitMaps);
+    unsigned char double_inDirectBlock[block_size_bytes];
+    read_sectors(baseSector + double_inDirectBlockId * 2, 2, double_inDirectBlock);
+    int doubleIndirectBlockIndex;
+    for(doubleIndirectBlockIndex = 0; doubleIndirectBlockIndex < block_size_bytes/4; doubleIndirectBlockIndex++){
+      unsigned int single_inDirectBlockId = *(unsigned int*)((void*)double_inDirectBlock + doubleIndirectBlockIndex * 4);  
+      check_singly_indirect_blocks(superBlock, baseSector, single_inDirectBlockId, numBlocks, allBitMaps);
+      if(*numBlocks == 0){
+        return;
+      }
+    }
+}
+
+/*
+ *  check tripple indirect blocks
+ */
+void check_tripple_indirect_blocks(struct ext2_super_block* superBlock, 
+  unsigned int baseSector,unsigned int tripple_inDirectBlockId, 
+                                      int* numBlocks, unsigned char* allBitMaps){
+      setBlockBitMap(superBlock, baseSector, tripple_inDirectBlockId, allBitMaps);
+      unsigned char tripple_inDirectBlock[block_size_bytes];
+      read_sectors(baseSector + tripple_inDirectBlockId * 2, 2, tripple_inDirectBlock);
+      int trippleIndirectBlockIndex;
+      for(trippleIndirectBlockIndex = 0; trippleIndirectBlockIndex < block_size_bytes/4; trippleIndirectBlockIndex++){
+        unsigned int double_inDirectBlockId = *(unsigned int*)((void*)tripple_inDirectBlock + trippleIndirectBlockIndex * 4);
+        check_doublely_indirect_blocks(superBlock, baseSector, double_inDirectBlockId, numBlocks, allBitMaps);
+        if(*numBlocks == 0){
+          return;
+        }
+      }
+}
+
+/*
+ *  check reg file inode blocks
+ */
+ void check_file_inode_blocks(struct ext2_super_block* superBlock, unsigned int baseSector, 
+                int inodeNum, unsigned char* allBitMaps, int* allocateCount){
+      struct ext2_inode inode;
+      read_inode(superBlock, baseSector, inodeNum, &inode);
+      int numBlocks = inode.i_size/block_size_bytes;
+      if(inode.i_size % block_size_bytes){
+          numBlocks++;
+      }
+      printf("Start to file inode %d with %d blocks\n", inodeNum, numBlocks);
+      *allocateCount += numBlocks;
+      int blocksLeft = numBlocks;
+      int num_direct_blocks = minOfTwo(n, 12);
+      int i;
+      // here we check the direct blocks
+      for(i = 0; i < num_direct_blocks; i++) {
+          unsigned int directBlockId = inode.i_block[i]
+          check_direct_blocks(superBlock, baseSector, directBlockId, allBitMaps);
+          blocksLeft--;
+      }
+      // here we check the singly indirect blocks
+      if(blocksLeft > 0){
+          check_singly_indirect_blocks(superBlock, baseSector, inode.i_block[12], allBitMaps);
+      }
+      // here we check the doubely indirect blocks
+      if(blocksLeft > 0){
+          check_doublely_indirect_blocks(superBlock, baseSector, inode.i_block[13], allBitMaps);
+      }
+      // here we check the tripple indirect blocks
+      if(blocksLeft > 0){
+          check_tripple_indirect_blocks(superBlock, baseSector, inode.i_block[14], allBitMaps);
+      }
+ }
+
+
+/*
+ *  check block allocation
+ */
+void check_all_blocks(struct ext2_super_block* superBlock, unsigned int baseSector){
+
+
+}
 /*
     auxilary fundction to print directories
  */
@@ -849,15 +981,6 @@ void check_reference_count(struct ext2_super_block* superBlock, unsigned baseSec
     }
     printf("-------------End PASS TWO and THREE-------------\n");
 }
-
-/*
- *  check block allocation
- */
-void check_all_blocks
-
-
-
-
 
 void part2Test(){
     printf("____________________Below is for tesing purpose___________________\n");
