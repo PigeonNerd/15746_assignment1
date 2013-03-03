@@ -553,10 +553,9 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
                 int inodeNum, unsigned char* allBitMaps, int* allocateCount){
       struct ext2_inode inode;
       read_inode(superBlock, baseSector, inodeNum, &inode);
-
       int numBlocks = inode.i_blocks/(2<<superBlock->s_log_block_size);
       
-      printf("Start to file inode %d with %d blocks\n", inodeNum, numBlocks);
+      printf("Start to file inode %d with %d blocks reserved\n", inodeNum, numBlocks);
       *allocateCount += numBlocks;
       int blocksLeft = numBlocks;
       int num_direct_blocks = minOfTwo(blocksLeft, 12);
@@ -581,6 +580,19 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
       }
  }
 
+/*
+ *  check dir file inode blocks
+ */
+ void check_dir_inode_blocks(struct ext2_super_block* superBlock, unsigned int baseSector, 
+                int inodeNum, unsigned char* allBitMaps, int* allocateCount){
+      struct ext2_inode inode;
+      read_inode(superBlock, baseSector, inodeNum, &inode);
+      int numBlocks = inode.i_blocks/(2<<superBlock->s_log_block_size);
+      
+      printf("Start to dir inode %d with %d blocks reserved\n", inodeNum, numBlocks);
+      *allocateCount += numBlocks;
+      int blocksLeft = numBlocks;
+ }
 
 /*
  *  check block allocation
