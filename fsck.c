@@ -998,11 +998,18 @@ void part2Test(){
     print_all_directory(&superBlock, baseSector);
 
     struct ext2_inode rootInode;
-    read_inode(&superBlock, baseSector, 10, &rootInode);
-    printf("inode 10 is %4x\n", rootInode.i_mode);
+    read_inode(&superBlock, baseSector, 4115, &rootInode);
+    printf("inode 4115 is %4x\n", rootInode.i_mode);
     
     if(S_ISREG(rootInode.i_mode)){
-        printf("8 is a file with size %d\n", rootInode.i_size);
+        printf("4115 is a file with size %d\n", rootInode.i_size);
+        int numBlocks = rootInode.i_size/block_size_bytes;
+        if( rootInode.i_size % block_size_bytes){
+            numBlocks ++;
+        }
+        int numReserved =  rootInode.i_blocks/(2<<superBlock.s_log_block_size);
+        printf("4115 now uses %d out of %d blocks\n", numBlocks, numReserved);
+    
     }
     
     //print_directory(&superBlock, &rootInode, baseSector);
@@ -1011,10 +1018,10 @@ void part2Test(){
     // }else{
     //   printf("This is junk\n");
     // }
-    int yes =  isInodeInBitMap(&superBlock, 31,  baseSector);
-    if(yes){
-       printf("inode 31 is set\n");
-     }
+    //int yes =  isInodeInBitMap(&superBlock, 31,  baseSector);
+   // if(yes){
+    //   printf("inode 31 is set\n");
+    //}
     // struct ext2_inode targetInode;
     // char path[] = "/oz/tornado/glinda";  
     // findInodeBasedOnPath(&superBlock, baseSector, path, &targetInode);
