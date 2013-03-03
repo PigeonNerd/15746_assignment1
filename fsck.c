@@ -850,6 +850,15 @@ void check_reference_count(struct ext2_super_block* superBlock, unsigned baseSec
     printf("-------------End PASS TWO and THREE-------------\n");
 }
 
+/*
+ *  check block allocation
+ */
+void check_all_blocks
+
+
+
+
+
 void part2Test(){
     printf("____________________Below is for tesing purpose___________________\n");
     unsigned char MBR[sector_size__bytes];
