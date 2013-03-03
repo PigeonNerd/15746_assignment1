@@ -1006,17 +1006,17 @@ void part2Test(){
     print_all_directory(&superBlock, baseSector);
 
     struct ext2_inode rootInode;
-    read_inode(&superBlock, baseSector, 4115, &rootInode);
-    printf("inode 4115 is %4x\n", rootInode.i_mode);
+    read_inode(&superBlock, baseSector, 2, &rootInode);
+    printf("inode 2 is %4x\n", rootInode.i_mode);
     
-    if(S_ISREG(rootInode.i_mode)){
-        printf("4115 is a file with size %d\n", rootInode.i_size);
+    if(S_ISDIR(rootInode.i_mode)){
+        printf("2 is a dir with size %d\n", rootInode.i_size);
         int numBlocks = rootInode.i_size/block_size_bytes;
         if( rootInode.i_size % block_size_bytes){
             numBlocks ++;
         }
         int numReserved =  rootInode.i_blocks/(2<<superBlock.s_log_block_size);
-        printf("4115 now uses %d out of %d blocks\n", numBlocks, numReserved);
+        printf("2 now uses %d out of %d blocks\n", numBlocks, numReserved);
     
     }
     
