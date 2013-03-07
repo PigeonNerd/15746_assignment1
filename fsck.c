@@ -1297,12 +1297,15 @@ main (int argc, char **argv)
   }
     if(partitionToFix >0){
         int64_t baseSector = print_partition(MBR, partitionToFix);
+        if(baseSector == 0){
+            printf("baseSector is 0\n");
+        }
         struct ext2_super_block superBlock;
         read_superBlock(baseSector, &superBlock);
         check_all_directory(&superBlock ,baseSector);
         check_unreference_count(&superBlock, baseSector);
         check_referenced_count(&superBlock, baseSector);
-        //check_all_blocks(&superBlock, baseSector);
+        check_all_blocks(&superBlock, baseSector);
     }else if(partitionToFix == 0){
         for(partitionToFix = 1; partitionToFix <=6; partitionToFix ++){
         int64_t baseSector = print_partition(MBR, partitionToFix);
@@ -1316,7 +1319,6 @@ main (int argc, char **argv)
              }
         }
     }
-
     close(device);
 	return 0;
 }
