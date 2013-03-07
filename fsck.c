@@ -1221,8 +1221,8 @@ main (int argc, char **argv)
         struct ext2_super_block superBlock;
         read_superBlock(baseSector, &superBlock);
         check_all_directory(&superBlock ,baseSector);
-        //check_unreference_count(&superBlock, baseSector);
-        check_referenced_count(&superBlock, baseSector);
+        check_unreference_count(&superBlock, baseSector);
+        //check_referenced_count(&superBlock, baseSector);
         check_all_directory(&superBlock ,baseSector);
         //check_all_blocks(&superBlock, baseSector);
     }else if(partitionToFix == 0){
@@ -1233,8 +1233,8 @@ main (int argc, char **argv)
             struct ext2_super_block superBlock;
             read_superBlock(baseSector, &superBlock);
             check_all_directory(&superBlock ,baseSector);
-            //check_unreference_count(&superBlock, baseSector);
-            check_referenced_count(&superBlock, baseSector);
+            check_unreference_count(&superBlock, baseSector);
+           // check_referenced_count(&superBlock, baseSector);
             check_all_directory(&superBlock ,baseSector);
             //check_all_blocks(&superBlock, baseSector);
              }
