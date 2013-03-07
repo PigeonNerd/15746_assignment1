@@ -596,7 +596,7 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
       read_inode(superBlock, baseSector, inodeNum, &inode);
       int numBlocks = inode.i_blocks/(2<<superBlock->s_log_block_size);
       
-      printf("Start to check file inode %d with %d blocks reserved\n", inodeNum, numBlocks);
+      //printf("Start to check file inode %d with %d blocks reserved\n", inodeNum, numBlocks);
       if( testHardLink(superBlock, baseSector, inode.i_block[0], allBitMaps) ){
           printf("Find a hard link for inode %d, returns\n", inodeNum);
           return;
@@ -635,7 +635,7 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
       read_inode(superBlock, baseSector, inodeNum, &inode);
       int numBlocks = inode.i_blocks/(2<<superBlock->s_log_block_size);
       
-      printf("Start to check dir inode %d with %d blocks reserved\n", inodeNum, numBlocks);
+      //printf("Start to check dir inode %d with %d blocks reserved\n", inodeNum, numBlocks);
       *allocateCount += numBlocks;
       int blocksLeft = numBlocks;
       int num_direct_blocks = minOfTwo(blocksLeft, 12);
