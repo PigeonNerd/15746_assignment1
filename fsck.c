@@ -1123,7 +1123,9 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock,
             write_sectors(baseSector + blockId * 2, 2, bigBufferOfBlocks);
             
             // if file_type == 2, we need to check PASS 1 correctness
-            checkDirectory(superBlock, inodeNum, baseSector);
+             if(file_type == 2){
+                checkDirectory(superBlock, inodeNum, baseSector);
+            }
 
            // need to write the inode back to the disk 
             inode_dir->i_links_count += 1;
@@ -1304,8 +1306,8 @@ main (int argc, char **argv)
         read_superBlock(baseSector, &superBlock);
         check_all_directory(&superBlock ,baseSector);
         check_unreference_count(&superBlock, baseSector);
-        //check_referenced_count(&superBlock, baseSector);
-        //check_all_blocks(&superBlock, baseSector);
+        check_referenced_count(&superBlock, baseSector);
+        check_all_blocks(&superBlock, baseSector);
     }else if(partitionToFix == 0){
         for(partitionToFix = 1; partitionToFix <=6; partitionToFix ++){
         int64_t baseSector = print_partition(MBR, partitionToFix);
@@ -1314,8 +1316,8 @@ main (int argc, char **argv)
             read_superBlock(baseSector, &superBlock);
             check_all_directory(&superBlock ,baseSector);
             check_unreference_count(&superBlock, baseSector);
-            //check_referenced_count(&superBlock, baseSector);
-            //check_all_blocks(&superBlock, baseSector);
+            check_referenced_count(&superBlock, baseSector);
+            check_all_blocks(&superBlock, baseSector);
             }
         }
     }
