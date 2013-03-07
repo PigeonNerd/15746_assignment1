@@ -352,7 +352,6 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
     int groupIndex = (blockId - 1)/blocksPerGroup;
 	  struct ext2_group_desc thisDesc;
     read_blockDesc(baseSector, groupIndex, &thisDesc);
-    unsigned int bitMapBlockId = thisDesc.bg_block_bitmap;
     // TODO: this needs rethinking
     int offset = (blockId - 1) % superBlock->s_blocks_per_group; 
 	  printf("OFFSET IS %d\n", offset);
@@ -376,7 +375,6 @@ int setBlockBitMap(struct ext2_super_block* superBlock,
     int groupIndex = (blockId-1)/blocksPerGroup;
     struct ext2_group_desc thisDesc;
     read_blockDesc(baseSector, groupIndex, &thisDesc);
-    unsigned int bitMapBlockId = thisDesc.bg_block_bitmap;
     // need rethink about this
     int offset = (blockId-1) % superBlock->s_blocks_per_group;
     unsigned char* bitMap = allBitMaps + startPoint[groupIndex];
@@ -385,11 +383,6 @@ int setBlockBitMap(struct ext2_super_block* superBlock,
     //printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
     int bit = bitMap[byteOffset] & (1<< (bitOffset));
     // if it is not present, we set it , to avoid hard link
-    if(offset == 51){
-       printf("###### first set block %d at group %d byteOffset %d bitOffset %d\n", blockId, groupIndex, byteOffset,
-               bitOffset);
-      printf("start ponit %d , %4x %4x\n", startPoint[groupIndex], allBitMaps, bitMap); 
-    }
     if( bit == 0){
        bitMap[byteOffset] |= (1<< (bitOffset));
        return 1;
@@ -408,7 +401,6 @@ int testHardLink(struct ext2_super_block* superBlock,
     int groupIndex = (blockId - 1)/blocksPerGroup;
     struct ext2_group_desc thisDesc;
     read_blockDesc(baseSector, groupIndex, &thisDesc);
-    unsigned int bitMapBlockId = thisDesc.bg_block_bitmap;
     // need rethink about this
     int offset = (blockId - 1)% superBlock->s_blocks_per_group;
     unsigned char* bitMap = (unsigned char*)(allBitMaps + startPoint[groupIndex]);
@@ -417,10 +409,6 @@ int testHardLink(struct ext2_super_block* superBlock,
     //printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
     int bit = bitMap[byteOffset] & (1<< (bitOffset));
     // if it is not present, we set it , to avoid hard link
-    if(bit){
-        printf("block %d ( %d ) has been set group %d at byte %d, bit offset %d before\n", blockId, offset, groupIndex, byteOffset, bitOffset);
-      printf("start ponit %d , %4x %4x\n", startPoint[groupIndex], allBitMaps, bitMap); 
-    }
     return bit;
 }
 
@@ -1228,7 +1216,7 @@ main (int argc, char **argv)
         //check_unreference_count(&superBlock, baseSector);
         check_referenced_count(&superBlock, baseSector);
         check_all_directory(&superBlock ,baseSector);
-        check_all_blocks(&superBlock, baseSector);
+        //check_all_blocks(&superBlock, baseSector);
     }
 
     close(device);
