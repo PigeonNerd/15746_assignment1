@@ -1206,7 +1206,7 @@ main (int argc, char **argv)
     read_sectors(0, 1, MBR);
     if(partitionToRead >= 0){
         print_partition(MBR, partitionToRead);
-        part2Test();
+        //part2Test();
   }
     if(partitionToFix >0){
         int64_t baseSector = print_partition(MBR, partitionToFix);
