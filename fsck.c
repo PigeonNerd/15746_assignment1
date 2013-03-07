@@ -355,14 +355,14 @@ int isInodeInBitMap(struct ext2_super_block* superBlock, int inodeNum, unsigned 
  */
 int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
         unsigned int baseSector){
-    printf("Test block %d...................\n", blockId);
+    //printf("Test block %d...................\n", blockId);
     unsigned int blocksPerGroup = superBlock->s_blocks_per_group;
     int groupIndex = (blockId - 1)/blocksPerGroup;
 	  struct ext2_group_desc thisDesc;
     read_blockDesc(baseSector, groupIndex, &thisDesc);
     // TODO: this needs rethinking
     int offset = (blockId - 1) % superBlock->s_blocks_per_group; 
-	  printf("OFFSET IS %d\n", offset);
+	//printf("OFFSET IS %d\n", offset);
     unsigned char bitMap[block_size_bytes];
     read_block_bitMap(baseSector, &thisDesc, bitMap);
     int byteOffset = offset/8;
@@ -378,6 +378,9 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
  */
 int setBlockBitMap(struct ext2_super_block* superBlock,
  unsigned int baseSector, unsigned int blockId, unsigned char* allBitMaps){
+    if ( !isBlockInBitMap(superBlock, blockId, baseSector)){
+        printf("ERROR: block %d should be set in the original bit map\n", blockId);
+    }
     unsigned int startPoint[3]= {0, 1024, 2048};
     unsigned int blocksPerGroup = superBlock->s_blocks_per_group;
     int groupIndex = (blockId-1)/blocksPerGroup;
@@ -627,7 +630,7 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
  *  check dir file inode blocks
  */
  void check_dir_inode_blocks(struct ext2_super_block* superBlock, unsigned int baseSector, 
-                int inodeNum, unsigned char* allBitMaps, int* allocateCount){
+                int inodeNum, unsigned char* allBitMaps, int* allocateCount, int* inodeCount){
       struct ext2_inode inode;
       read_inode(superBlock, baseSector, inodeNum, &inode);
       int numBlocks = inode.i_blocks/(2<<superBlock->s_log_block_size);
@@ -672,9 +675,11 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
         size += entry->rec_len;
         count ++;
         if ( count > 2 && entry->file_type == EXT2_FT_DIR){
-            check_dir_inode_blocks(superBlock, baseSector, entry->inode, allBitMaps, allocateCount);
+            check_dir_inode_blocks(superBlock, baseSector, entry->inode, allBitMaps, allocateCount, inodeCount);
         }
+           
         else if (count > 2 && entry->file_type == EXT2_FT_REG_FILE){
+            (*inodeCount) ++;
             check_file_inode_blocks(superBlock, baseSector, entry->inode, allBitMaps, allocateCount);
         }
 
@@ -687,9 +692,11 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
 void check_all_blocks(struct ext2_super_block* superBlock, unsigned int baseSector){
     printf("-----------------Start PASS FOUR check blocks allocation-------------\n\n");
     int allocateCount = 0;
+    int inodeCount = 0;
     unsigned char allBitMaps[3 * 1024] = {0};
-    check_dir_inode_blocks(superBlock,baseSector, 2, allBitMaps, &allocateCount);
+    check_dir_inode_blocks(superBlock,baseSector, 2, allBitMaps, &allocateCount, &inodeCount);
     printf("Total number of blocks allocated: %d\n", allocateCount);
+    printf("total number of files %d\n", inodeCount);
     printf("Actual allocate %d\n", superBlock->s_blocks_count - superBlock->s_free_blocks_count);
     printf("-----------------End PASS FOUR--------------------\n\n");
 }
@@ -697,7 +704,7 @@ void check_all_blocks(struct ext2_super_block* superBlock, unsigned int baseSect
     auxilary fundction to print directories
  */
 
-void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* inode, unsigned int baseSector){
+void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* inode, unsigned int baseSector, int* fileCount, int* dirCount){
     
     int numBlocks = inode->i_size/block_size_bytes;
     if(inode->i_size%block_size_bytes){
@@ -718,11 +725,16 @@ void print_directory(struct ext2_super_block* superBlock, struct ext2_inode* ino
         memcpy(file_name, entry->name, entry->name_len);
         file_name[entry->name_len] = 0;
         if( count > 2 && entry->file_type == EXT2_FT_DIR){
+            (*dirCount)++;
             printf("%10u %s, type:  %d, rec len: %d\n", entry->inode, file_name, entry->file_type, entry->rec_len);
             struct ext2_inode thisInode;
             read_inode(superBlock, baseSector, entry->inode, &thisInode);
-            print_directory(superBlock, &thisInode, baseSector);
-        }else {
+            print_directory(superBlock, &thisInode, baseSector, fileCount, dirCount);
+        }else if(count > 2){
+            if(entry->file_type != 1){
+                printf("######## %d has file_type %d\n", entry->inode, entry->file_type);
+            }
+            (*fileCount)++;
             printf("%10u %s name len: %d type:  %d, rec len: %d, real len: %d\n", entry->inode, file_name,
                 entry->name_len,entry->file_type, entry->rec_len, EXT2_DIR_REC_LEN(entry->name_len));
         }
@@ -900,7 +912,10 @@ void checkDirectory(struct ext2_super_block* superBlock, int inodeNum, unsigned 
 void print_all_directory(struct ext2_super_block* superBlock, unsigned int baseSector){
     struct ext2_inode rootInode;
     read_inode(superBlock, baseSector, 2, &rootInode);
-    print_directory(superBlock, &rootInode, baseSector);
+    int fileCount = 0;
+    int dirCount = 0;
+    print_directory(superBlock, &rootInode, baseSector, &fileCount, &dirCount);
+    printf("file: %d, dir: %d\n", fileCount, dirCount);
 }
 
 /*
@@ -1002,7 +1017,7 @@ void check_all_directory(struct ext2_super_block* superBlock, unsigned baseSecto
  */
 
 void addInodeAsFileToDir(struct ext2_super_block* superBlock, 
-    unsigned int baseSector, struct ext2_inode* inode_dir, int inodeNum){
+    unsigned int baseSector, struct ext2_inode* inode_dir, int inodeNum, int file_type){
     // here we temporarily assume the number of blocks is not more than 12
     int numBlocks = inode_dir->i_size/block_size_bytes;
     if(inode_dir->i_size%block_size_bytes){
@@ -1023,7 +1038,7 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock,
             // haha we find a place
             printf("we have a place to insert the inode num at blockIndex %d, at offset %d\n", size/block_size_bytes, size%block_size_bytes);
             entry->inode = inodeNum;
-            entry->file_type = 2;
+            entry->file_type = file_type;
             sprintf(entry->name, "%d", inodeNum);
             entry->name_len = strlen(entry->name);
             entry->rec_len  = block_size_bytes - size;
@@ -1034,6 +1049,9 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock,
             printf("block id %d, sector at %d\n", blockId, baseSector + blockId * 2);
             write_sectors(baseSector + blockId * 2, 2, bigBufferOfBlocks);
             
+            // if file_type == 2, we need to check PASS 1 correctness
+            checkDirectory(superBlock, inodeNum, baseSector);
+
            // need to write the inode back to the disk 
             inode_dir->i_links_count += 1;
             int secNum = inodeToSector(superBlock, baseSector, thisInodeNum);
@@ -1054,24 +1072,32 @@ void addInodeAsFileToDir(struct ext2_super_block* superBlock,
  *  check unreferenced inode
  */
 void check_unreference_count(struct ext2_super_block* superBlock, unsigned baseSector){
-    printf("-------------Start PASS TWO checking reference count---------------\n\n");
+    printf("-------------Start PASS TWO checking unreferenced count---------------\n\n");
     int totalNumInodes = superBlock->s_inodes_count;
     int inodeNum;
     for(inodeNum = 2; inodeNum <= totalNumInodes; inodeNum++){
             int count = 0;
             struct ext2_inode testInode;
-            read_inode(superBlock, baseSector, inodeNum,&testInode);
+            read_inode(superBlock, baseSector, inodeNum, &testInode);
             int storedLinkCount = testInode.i_links_count;
             find_link_count(superBlock, 2, inodeNum,  baseSector, &count);
+            if(inodeNum == 31 ){
+                printf("***** %d, %d\n", count, storedLinkCount);
+            }
             if( count == 0 && storedLinkCount != 0){
                 printf("NOTE: inode %d is not referenced by anyone\n", inodeNum);
                 char lostFound[] = "/lost+found"; 
                 struct ext2_inode thisInode;
+                int file_type = 1;
                 findInodeBasedOnPath(superBlock, baseSector, lostFound, &thisInode);
-                addInodeAsFileToDir(superBlock, baseSector, &thisInode, inodeNum);
+                if( S_ISDIR(testInode.i_mode)){
+                    file_type = 2;
+              }
+                addInodeAsFileToDir(superBlock, baseSector, &thisInode, inodeNum, file_type);
+                
                 //print_directory(superBlock, &thisInode, baseSector);
             }
-            else if( count != 0 && storedLinkCount != count){
+           /* else if( count != 0 && storedLinkCount != count){
                 printf("NOTE: inode %d stored link count: %d, the actual link count: %d\n", 
                                                             inodeNum, storedLinkCount, count);
                 testInode.i_links_count = count;
@@ -1081,7 +1107,7 @@ void check_unreference_count(struct ext2_super_block* superBlock, unsigned baseS
                 int secOffset = (inodeNum - 1) % 4;
                 memcpy(inodeSector + secOffset*sizeof(struct ext2_inode), &testInode, sizeof(struct ext2_inode));
                 write_sectors(secNum, 1, inodeSector);
-            }
+            }*/
     }
     printf("-------------End PASS TWO-------------\n\n");
 }
@@ -1125,57 +1151,37 @@ void part2Test(){
     unsigned char MBR[sector_size__bytes];
     read_sectors(0, 1, MBR);
     print_partition_table(MBR);
-    int64_t baseSector = print_partition(MBR, 6);
+    int64_t baseSector = print_partition(MBR, 1);
     struct ext2_super_block superBlock;
     
     read_superBlock(baseSector, &superBlock);
     print_superBlock(&superBlock);
     print_all_directory(&superBlock, baseSector);
-
-    struct ext2_inode rootInode;
-    read_inode(&superBlock, baseSector, 30, &rootInode);
-    printf("inode 30 is %4x\n", rootInode.i_mode);
     
-    //if(S_ISREG(rootInode.i_mode)){
-        printf("30 is a dir with size %d\n", rootInode.i_size);
-        int numBlocks = rootInode.i_size/block_size_bytes;
-        if( rootInode.i_size % block_size_bytes){
-            numBlocks ++;
+    int counter = 0;
+    int inodeNum;
+    int numBlocks = 0;
+    int numInode = superBlock.s_inodes_count;
+   for(inodeNum = 1 ; inodeNum <= numInode; inodeNum ++ ){
+       struct ext2_inode testInode;
+       read_inode(&superBlock,baseSector, inodeNum, &testInode);
+       if( isInodeInBitMap(&superBlock, inodeNum, baseSector)){
+           counter++;
+           numBlocks += testInode.i_blocks/(2<<superBlock.s_log_block_size);
         }
-        int numReserved =  rootInode.i_blocks/(2<<superBlock.s_log_block_size);
-        printf("30 now uses %d out of %d blocks\n", numBlocks, numReserved);
-        unsigned char bigBufferOfBlocks[numBlocks * block_size_bytes];
-        //fetch_all_blocks(baseSector, rootInode.i_block, numBlocks, bigBufferOfBlocks);
-        //printf("%s\n", bigBufferOfBlocks);
-    //}
+    }
+    printf("total Inodes: %d, actual count: %d, total blocks: %d, actual count: %d\n", superBlock.s_inodes_count - superBlock.s_free_inodes_count, counter,superBlock.s_blocks_count -superBlock.s_free_blocks_count, numBlocks );
     
-    check_all_blocks(&superBlock, baseSector);
-    //print_directory(&superBlock, &rootInode, baseSector);
-    //if(S_ISDIR(rootInode.i_mode)){
-    //   printf("This is dir\n");
-    // }else{
-    //   printf("This is junk\n");
-    // }
-    //int yes =  isInodeInBitMap(&superBlock, 31,  baseSector);
-   // if(yes){
-    //   printf("inode 31 is set\n");
-    //}
-    // struct ext2_inode targetInode;
-    // char path[] = "/oz/tornado/glinda";  
-    // findInodeBasedOnPath(&superBlock, baseSector, path, &targetInode);
-     //int blockId = targetInode.i_block[0];
-     //unsigned char block[block_size_bytes];
-     //read_sectors(baseSector + blockId * 2, 2 , block);
+    int blockId;
+    int counter2 = 0;
+    for(blockId = 1; blockId <= superBlock.s_blocks_count; blockId++){
+        if( isBlockInBitMap(&superBlock, blockId, baseSector)){
+            counter2++;
+        }
+    }
+    printf("actual count of blocks %d\n", counter2);
 
-     //print_directory(&superBlock, &targetInode, baseSector);
-     // unsigned int blockId = targetInode.i_block[0];
-    
-    // printf("%s\n", (char*)targetInode.i_block);
-   
-    //yes = isBlockInBitMap(&superBlock, blockId, baseSector);
-    //if(yes){
-      //printf("block %d is set\n", blockId);
-    //}
+
 }
 
 void smallTest(){
@@ -1214,7 +1220,7 @@ main (int argc, char **argv)
     read_sectors(0, 1, MBR);
     if(partitionToRead >= 0){
         print_partition(MBR, partitionToRead);
-        //part2Test();
+        part2Test();
   }
     if(partitionToFix >0){
         int64_t baseSector = print_partition(MBR, partitionToFix);
@@ -1222,9 +1228,8 @@ main (int argc, char **argv)
         read_superBlock(baseSector, &superBlock);
         check_all_directory(&superBlock ,baseSector);
         check_unreference_count(&superBlock, baseSector);
-        //check_referenced_count(&superBlock, baseSector);
-        check_all_directory(&superBlock ,baseSector);
-        //check_all_blocks(&superBlock, baseSector);
+        check_referenced_count(&superBlock, baseSector);
+        check_all_blocks(&superBlock, baseSector);
     }else if(partitionToFix == 0){
         for(partitionToFix = 1; partitionToFix <=6; partitionToFix ++){
             
@@ -1234,8 +1239,7 @@ main (int argc, char **argv)
             read_superBlock(baseSector, &superBlock);
             check_all_directory(&superBlock ,baseSector);
             check_unreference_count(&superBlock, baseSector);
-           // check_referenced_count(&superBlock, baseSector);
-            check_all_directory(&superBlock ,baseSector);
+            check_referenced_count(&superBlock, baseSector);
             //check_all_blocks(&superBlock, baseSector);
              }
         }
