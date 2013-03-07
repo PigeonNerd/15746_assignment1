@@ -1217,6 +1217,8 @@ main (int argc, char **argv)
         check_referenced_count(&superBlock, baseSector);
         check_all_directory(&superBlock ,baseSector);
         //check_all_blocks(&superBlock, baseSector);
+    }else{
+        printf("#### I get called\n");
     }
 
     close(device);
