@@ -1293,7 +1293,7 @@ main (int argc, char **argv)
     read_sectors(0, 1, MBR);
     if(partitionToRead >= 0){
         print_partition(MBR, partitionToRead);
-        part2Test(partitionToRead);
+        //part2Test(partitionToRead);
   }
     if(partitionToFix >0){
         int64_t baseSector = print_partition(MBR, partitionToFix);
@@ -1313,7 +1313,7 @@ main (int argc, char **argv)
             check_all_directory(&superBlock ,baseSector);
             check_unreference_count(&superBlock, baseSector);
             check_referenced_count(&superBlock, baseSector);
-            //check_all_blocks(&superBlock, baseSector);
+            check_all_blocks(&superBlock, baseSector);
              }
         }
     }
