@@ -1217,7 +1217,7 @@ main (int argc, char **argv)
         check_referenced_count(&superBlock, baseSector);
         check_all_directory(&superBlock ,baseSector);
         //check_all_blocks(&superBlock, baseSector);
-    }else{
+    }else if(partitionToFix == 0){
         printf("#### I get called\n");
     }
 
