@@ -759,7 +759,7 @@ void check_all_blocks(struct ext2_super_block* superBlock, unsigned int baseSect
     printf("Actual number of files %d\n", inodeCount);
     printf("Total number of blocks allocated from superblock %d\n", superBlock->s_blocks_count - superBlock->s_free_blocks_count);
     printf("Total number of inodes allocated from superblock %d\n",superBlock->s_inodes_count - superBlock->s_free_inodes_count);
-    compareBitMap(superBlock, baseSector, allBitMaps);
+    //compareBitMap(superBlock, baseSector, allBitMaps);
 	struct ext2_group_desc thisDesc;
     unsigned int startPoint[3]= {0, 1024, 2048};
     int groupIndex;
