@@ -392,7 +392,7 @@ void setBlockBitMap(struct ext2_super_block* superBlock,
     int byteOffset = offset/8;
     int bitOffset = offset%8;
     if(groupIndex == 2){
-        printf("@ byte %d\n", byteOffset);       
+        printf("@ byte %d, blockId %d\n", byteOffset, blockId);       
     }
     //printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
     //int bit = bitMap[byteOffset] & (1<< (bitOffset));
@@ -1235,6 +1235,9 @@ void part2Test(){
     for(blockId = 1; blockId <= superBlock.s_blocks_count; blockId++){
         if( isBlockInBitMap(&superBlock, blockId, baseSector)){
             counter2++;
+        if((blockId - 1) / 8192 == 2){
+       //     printf("BLOCK %d\n", blockId);
+        }
         }
     }
     printf("actual count of blocks %d\n", counter2);
