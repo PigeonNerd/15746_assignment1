@@ -198,8 +198,12 @@ int64_t print_partition(unsigned char* MBR, int p){
 	if(p < 5){
 		sp = (struct partition *)(MBR + lotsOfZeros + 16*(p-1));
 		printf("0x%02X %d %d\n", sp->sys_ind, sp->start_sect, sp->nr_sects);
-    return sp->start_sect;
-	}else{
+        if(sp->sys_ind == 131){
+            return sp->start_sect;
+        }else{
+            return 0;
+        }
+    }else{
 		int i;
 	    for(i = 0; i < 5; i++){
             sp = (struct partition *)(MBR + lotsOfZeros + 16 * i);
@@ -226,7 +230,11 @@ int64_t print_partition(unsigned char* MBR, int p){
 			}
 		}
 		printf("0x%02X %d %d\n", logicalPartition->sys_ind, logiStart, logicalPartition->nr_sects);
-	  return logiStart;
+        if(logicalPartition->sys_ind == 131){
+            return logiStart;
+        }else{
+            return 0;
+        }
   }
 }
 
@@ -1218,7 +1226,19 @@ main (int argc, char **argv)
         check_all_directory(&superBlock ,baseSector);
         //check_all_blocks(&superBlock, baseSector);
     }else if(partitionToFix == 0){
-        printf("#### I get called\n");
+        for(partitionToFix = 1; partitionToFix <=6; partitionToFix ++){
+            
+        int64_t baseSector = print_partition(MBR, partitionToFix);
+        if(baseSector != 0 && partitionToFix != 4){
+            struct ext2_super_block superBlock;
+            read_superBlock(baseSector, &superBlock);
+            check_all_directory(&superBlock ,baseSector);
+            //check_unreference_count(&superBlock, baseSector);
+            check_referenced_count(&superBlock, baseSector);
+            check_all_directory(&superBlock ,baseSector);
+            //check_all_blocks(&superBlock, baseSector);
+             }
+        }
     }
 
     close(device);
