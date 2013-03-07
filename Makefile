@@ -4,7 +4,7 @@ CFLAGS		= -g -Wall -DDEBUG
 LDFLAGS		= -lm
 OBJS		= readwrite.o
 BINS        = myfsck
-K = 1  
+K = 6  
 
 # Explit build and testing targets
 

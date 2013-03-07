@@ -391,9 +391,6 @@ void setBlockBitMap(struct ext2_super_block* superBlock,
     unsigned char* bitMap = allBitMaps + startPoint[groupIndex];
     int byteOffset = offset/8;
     int bitOffset = offset%8;
-    if(groupIndex == 2){
-        printf("@ byte %d, blockId %d\n", byteOffset, blockId);       
-    }
     //printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
     //int bit = bitMap[byteOffset] & (1<< (bitOffset));
     // if it is not present, we set it , to avoid hard link
@@ -713,22 +710,26 @@ void pre_set_block_bitmap(struct ext2_super_block* superBlock, unsigned int base
    for(i = 16389; i <= 16639; i++){
      setBlockBitMap(superBlock, baseSector, i, allBitMaps);
    }
+
+    //TODO: padding the rest of the last group block bit map
+   int logiTotal = 3 * superBlock->s_blocks_per_group;
+   int actualTotal = superBlock->s_blocks_count;
+   for(i = logiTotal; i >= actualTotal; i--){
+     setBlockBitMap(superBlock, baseSector, i, allBitMaps);
+    }   
 }
 
 /*
  *  compare orginal bitmap and the bitmap generated
  */
 void compareBitMap(struct ext2_super_block* superBlock, unsigned int baseSector, unsigned char* allBitMaps){
-   printf("Start to compare two bit maps..........\n"); 
+   printf("Start to compare two bit maps..........\n\n"); 
 	struct ext2_group_desc thisDesc;
     unsigned char bitMap[block_size_bytes];
     unsigned int startPoint[3]= {0, 1024, 2048};
     int groupIndex;
     for(groupIndex = 0; groupIndex <=2; groupIndex ++){
         read_blockDesc(baseSector, groupIndex, &thisDesc);
-        if(groupIndex == 2){
-            printf("**** %d %d\n", thisDesc. bg_block_bitmap, thisDesc.  bg_inode_bitmap);
-        }
         read_block_bitMap(baseSector, &thisDesc, bitMap);
         unsigned char* myBitMap = allBitMaps + startPoint[groupIndex];
         int byteIndex;
@@ -738,6 +739,7 @@ void compareBitMap(struct ext2_super_block* superBlock, unsigned int baseSector,
             }
         }
     }
+   printf("\nEnd  compare two bit maps..........\n"); 
 }
 
 
@@ -747,15 +749,28 @@ void compareBitMap(struct ext2_super_block* superBlock, unsigned int baseSector,
  */
 void check_all_blocks(struct ext2_super_block* superBlock, unsigned int baseSector){
     printf("-----------------Start PASS FOUR check blocks allocation-------------\n\n");
+    int numPresetBlocks = 3 * superBlock->s_inodes_per_group/(block_size_bytes/sizeof(struct ext2_inode)) + 5 + 4 + 2;
     int allocateCount = 0;
     int inodeCount = 0;
     unsigned char allBitMaps[3 * 1024] = {0};
     pre_set_block_bitmap(superBlock, baseSector, allBitMaps);
     check_dir_inode_blocks(superBlock,baseSector, 2, allBitMaps, &allocateCount, &inodeCount);
-    printf("Total number of blocks allocated: %d\n", allocateCount);
-    printf("total number of files %d\n", inodeCount);
-    printf("Actual allocate %d\n", superBlock->s_blocks_count - superBlock->s_free_blocks_count);
+    printf("Actual number of blocks allocated: %d\n", allocateCount + numPresetBlocks);
+    printf("Actual number of files %d\n", inodeCount);
+    printf("Total number of blocks allocated from superblock %d\n", superBlock->s_blocks_count - superBlock->s_free_blocks_count);
+    printf("Total number of inodes allocated from superblock %d\n",superBlock->s_inodes_count - superBlock->s_free_inodes_count);
     compareBitMap(superBlock, baseSector, allBitMaps);
+	struct ext2_group_desc thisDesc;
+    unsigned int startPoint[3]= {0, 1024, 2048};
+    int groupIndex;
+    unsigned int blockId; 
+    for (groupIndex = 0; groupIndex <=2; groupIndex++) {
+        read_blockDesc(baseSector, groupIndex, &thisDesc);
+        blockId = thisDesc.bg_block_bitmap;
+        unsigned char* mybitmap = allBitMaps + startPoint[groupIndex];
+        write_sectors(baseSector + blockId*2, 2, mybitmap);
+    }
+    
     printf("-----------------End PASS FOUR--------------------\n\n");
 }
 /*
@@ -1139,9 +1154,6 @@ void check_unreference_count(struct ext2_super_block* superBlock, unsigned baseS
             read_inode(superBlock, baseSector, inodeNum, &testInode);
             int storedLinkCount = testInode.i_links_count;
             find_link_count(superBlock, 2, inodeNum,  baseSector, &count);
-            if(inodeNum == 31 ){
-                printf("***** %d, %d\n", count, storedLinkCount);
-            }
             if( count == 0 && storedLinkCount != 0){
                 printf("NOTE: inode %d is not referenced by anyone\n", inodeNum);
                 char lostFound[] = "/lost+found"; 
@@ -1204,12 +1216,12 @@ void check_unreference_count(struct ext2_super_block* superBlock, unsigned baseS
 
 
 
-void part2Test(){
+void part2Test(int partition){
     printf("____________________Below is for tesing purpose___________________\n");
     unsigned char MBR[sector_size__bytes];
     read_sectors(0, 1, MBR);
     print_partition_table(MBR);
-    int64_t baseSector = print_partition(MBR, 1);
+    int64_t baseSector = print_partition(MBR, partition);
     struct ext2_super_block superBlock;
     
     read_superBlock(baseSector, &superBlock);
@@ -1281,7 +1293,7 @@ main (int argc, char **argv)
     read_sectors(0, 1, MBR);
     if(partitionToRead >= 0){
         print_partition(MBR, partitionToRead);
-        part2Test();
+        part2Test(partitionToRead);
   }
     if(partitionToFix >0){
         int64_t baseSector = print_partition(MBR, partitionToFix);
