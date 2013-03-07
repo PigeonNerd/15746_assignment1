@@ -1305,7 +1305,7 @@ main (int argc, char **argv)
         check_all_directory(&superBlock ,baseSector);
         check_unreference_count(&superBlock, baseSector);
         check_referenced_count(&superBlock, baseSector);
-        check_all_blocks(&superBlock, baseSector);
+        //check_all_blocks(&superBlock, baseSector);
     }else if(partitionToFix == 0){
         for(partitionToFix = 1; partitionToFix <=6; partitionToFix ++){
         int64_t baseSector = print_partition(MBR, partitionToFix);
@@ -1315,8 +1315,8 @@ main (int argc, char **argv)
             check_all_directory(&superBlock ,baseSector);
             check_unreference_count(&superBlock, baseSector);
             check_referenced_count(&superBlock, baseSector);
-            check_all_blocks(&superBlock, baseSector);
-             }
+            //check_all_blocks(&superBlock, baseSector);
+            }
         }
     }
     close(device);
