@@ -1304,7 +1304,7 @@ main (int argc, char **argv)
         read_superBlock(baseSector, &superBlock);
         check_all_directory(&superBlock ,baseSector);
         check_unreference_count(&superBlock, baseSector);
-        check_referenced_count(&superBlock, baseSector);
+        //check_referenced_count(&superBlock, baseSector);
         //check_all_blocks(&superBlock, baseSector);
     }else if(partitionToFix == 0){
         for(partitionToFix = 1; partitionToFix <=6; partitionToFix ++){
@@ -1314,7 +1314,7 @@ main (int argc, char **argv)
             read_superBlock(baseSector, &superBlock);
             check_all_directory(&superBlock ,baseSector);
             check_unreference_count(&superBlock, baseSector);
-            check_referenced_count(&superBlock, baseSector);
+            //check_referenced_count(&superBlock, baseSector);
             //check_all_blocks(&superBlock, baseSector);
             }
         }
