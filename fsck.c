@@ -358,7 +358,7 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
     //printf("Test block %d...................\n", blockId);
     unsigned int blocksPerGroup = superBlock->s_blocks_per_group;
     int groupIndex = (blockId - 1)/blocksPerGroup;
-	  struct ext2_group_desc thisDesc;
+	struct ext2_group_desc thisDesc;
     read_blockDesc(baseSector, groupIndex, &thisDesc);
     // TODO: this needs rethinking
     int offset = (blockId - 1) % superBlock->s_blocks_per_group; 
@@ -376,7 +376,7 @@ int isBlockInBitMap(struct ext2_super_block* superBlock, unsigned int blockId,
 /*
  *  set block bit map
  */
-int setBlockBitMap(struct ext2_super_block* superBlock,
+void setBlockBitMap(struct ext2_super_block* superBlock,
  unsigned int baseSector, unsigned int blockId, unsigned char* allBitMaps){
     if ( !isBlockInBitMap(superBlock, blockId, baseSector)){
         printf("ERROR: block %d should be set in the original bit map\n", blockId);
@@ -391,15 +391,18 @@ int setBlockBitMap(struct ext2_super_block* superBlock,
     unsigned char* bitMap = allBitMaps + startPoint[groupIndex];
     int byteOffset = offset/8;
     int bitOffset = offset%8;
+    if(groupIndex == 2){
+        printf("@ byte %d\n", byteOffset);       
+    }
     //printf("byte offset is %d, bit offset is %d\n", byteOffset, bitOffset);
-    int bit = bitMap[byteOffset] & (1<< (bitOffset));
+    //int bit = bitMap[byteOffset] & (1<< (bitOffset));
     // if it is not present, we set it , to avoid hard link
-    if( bit == 0){
+    //if( bit == 0){
        bitMap[byteOffset] |= (1<< (bitOffset));
-       return 1;
-    }else{
-      return 0;
-    }   
+      // return 1;
+    //}else{
+      //return 0;
+    //}   
 }
 
 /*
@@ -687,6 +690,59 @@ void check_tripple_indirect_blocks(struct ext2_super_block* superBlock,
  }
 
 /*
+ *  pre - set the block bitmap
+ */
+void pre_set_block_bitmap(struct ext2_super_block* superBlock, unsigned int baseSector, unsigned char* allBitMaps){
+     setBlockBitMap(superBlock, baseSector, 1, allBitMaps);
+     setBlockBitMap(superBlock, baseSector, 2, allBitMaps);
+     setBlockBitMap(superBlock, baseSector, 3, allBitMaps);
+     setBlockBitMap(superBlock, baseSector, 4, allBitMaps);
+    int i;
+    for(i = 5; i <= 255; i++){
+     setBlockBitMap(superBlock, baseSector, i, allBitMaps);
+    }
+     setBlockBitMap(superBlock, baseSector, 8193, allBitMaps);
+     setBlockBitMap(superBlock, baseSector, 8194, allBitMaps);
+     setBlockBitMap(superBlock, baseSector, 8195, allBitMaps);
+     setBlockBitMap(superBlock, baseSector, 8196, allBitMaps);
+   for(i = 8197; i <= 8447; i++){
+     setBlockBitMap(superBlock, baseSector, i, allBitMaps);
+   }
+    setBlockBitMap(superBlock, baseSector, 16385, allBitMaps);
+     setBlockBitMap(superBlock, baseSector, 16386, allBitMaps);
+   for(i = 16389; i <= 16639; i++){
+     setBlockBitMap(superBlock, baseSector, i, allBitMaps);
+   }
+}
+
+/*
+ *  compare orginal bitmap and the bitmap generated
+ */
+void compareBitMap(struct ext2_super_block* superBlock, unsigned int baseSector, unsigned char* allBitMaps){
+   printf("Start to compare two bit maps..........\n"); 
+	struct ext2_group_desc thisDesc;
+    unsigned char bitMap[block_size_bytes];
+    unsigned int startPoint[3]= {0, 1024, 2048};
+    int groupIndex;
+    for(groupIndex = 0; groupIndex <=2; groupIndex ++){
+        read_blockDesc(baseSector, groupIndex, &thisDesc);
+        if(groupIndex == 2){
+            printf("**** %d %d\n", thisDesc. bg_block_bitmap, thisDesc.  bg_inode_bitmap);
+        }
+        read_block_bitMap(baseSector, &thisDesc, bitMap);
+        unsigned char* myBitMap = allBitMaps + startPoint[groupIndex];
+        int byteIndex;
+        for(byteIndex = 0; byteIndex < 1024; byteIndex ++){
+            if(bitMap[byteIndex] != myBitMap[byteIndex]){
+                printf("ERROR: @byte  %d , original %x, mine %x\n", byteIndex,bitMap[byteIndex], myBitMap[byteIndex]);                
+            }
+        }
+    }
+}
+
+
+
+/*
  *  check block allocation
  */
 void check_all_blocks(struct ext2_super_block* superBlock, unsigned int baseSector){
@@ -694,10 +750,12 @@ void check_all_blocks(struct ext2_super_block* superBlock, unsigned int baseSect
     int allocateCount = 0;
     int inodeCount = 0;
     unsigned char allBitMaps[3 * 1024] = {0};
+    pre_set_block_bitmap(superBlock, baseSector, allBitMaps);
     check_dir_inode_blocks(superBlock,baseSector, 2, allBitMaps, &allocateCount, &inodeCount);
     printf("Total number of blocks allocated: %d\n", allocateCount);
     printf("total number of files %d\n", inodeCount);
     printf("Actual allocate %d\n", superBlock->s_blocks_count - superBlock->s_free_blocks_count);
+    compareBitMap(superBlock, baseSector, allBitMaps);
     printf("-----------------End PASS FOUR--------------------\n\n");
 }
 /*
